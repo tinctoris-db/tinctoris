@@ -10,7 +10,7 @@ instrumentos, fontes digitais, e a qualquer tipo novo que queira criar.
 
 **Instalar (alunos e colegas, versão beta):** ver o [guia de instalação](GUIA-INSTALACAO.md) — uma linha no
 Terminal de um Mac com processador Apple. Licença: [AGPL 3.0](LICENSE) (programa) e [CC BY-SA 4.0](LICENSE-docs.md)
-(este manual); [créditos](CREDITOS.md); [como citar](CITATION.cff).
+(este manual); [créditos](CREDITOS.md); [como citar](CITATION.cff); [como colaborar](CONTRIBUTING.md).
 
 Tudo vive na pasta onde o TINCTORIS foi instalado (pode ser um disco externo):
 
