@@ -1,0 +1,7 @@
+{
+  "_nota": "Formulário de comentários dos testers (Google Forms). «url»: ligação do formulário terminada em /viewform. «campos.informacao»: identificador (entry.NNN) da pergunta «Informação técnica», preenchida pela app. Vazio = botão mostra que ainda não está configurado.",
+  "url": "https://docs.google.com/forms/d/e/1FAIpQLSdIugAhHgzI3D2kSMFsnwaEEMp0RVpTr8p8hrIEcNHEdTEvVw/viewform",
+  "campos": {
+    "informacao": "entry.1294248246"
+  }
+}

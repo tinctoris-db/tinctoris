@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "Se usar o TINCTORIS num trabalho académico, cite-o assim. / If you use TINCTORIS in academic work, please cite it as below."
+title: "TINCTORIS: Treatises, Inventories, Notation, Codices, Texts, Organology, Records, Iconography and Sources"
+abstract: "Base de dados pessoal de fontes para musicologia, investigação artística e ensino (manuscritos, impressos, partituras, gravações, instrumentos, iconografia), com identificação automática em catálogos como RISM, DIAMM e IMSLP. / A personal sources database for musicology, artistic research and teaching."
+type: software
+authors:
+  - family-names: "Sousa Silva"
+    given-names: "Pedro"
+    affiliation: "ESMAE – Escola Superior de Música e Artes do Espetáculo, Politécnico do Porto"
+version: "0.9.0-beta"
+license: AGPL-3.0-or-later
+keywords:
+  - musicology
+  - artistic research
+  - music sources
+  - bibliography
+  - RISM

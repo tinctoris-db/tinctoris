@@ -1,0 +1,26 @@
+{
+  "name": "tinctoris-servico",
+  "version": "0.9.0-beta",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Pedro Sousa Silva e contribuidores do TINCTORIS",
+  "license": "AGPL-3.0-or-later",
+  "description": "TINCTORIS — serviço de fundo (watch folder, identificação, OCR, exportação)",
+  "type": "module",
+  "dependencies": {
+    "@citation-js/core": "^0.8.2",
+    "@citation-js/plugin-bibtex": "^0.8.2",
+    "@citation-js/plugin-csl": "^0.8.2",
+    "@citation-js/plugin-ris": "^0.8.2",
+    "chokidar": "^5.0.0",
+    "pdf-lib": "^1.17.1",
+    "pocketbase": "^0.28.1",
+    "word-extractor": "1.0.4"
+  },
+  "overrides": {
+    "node-fetch": "^2.7.0"
+  }
+}

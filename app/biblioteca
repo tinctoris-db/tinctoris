@@ -1,0 +1,4 @@
+#!/bin/zsh
+# Comandos de terminal do TINCTORIS. Ex.: ./biblioteca exportar --estilo apa
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+cd "${0:A:h}/worker" && exec node --no-deprecation src/cli.js "$@"

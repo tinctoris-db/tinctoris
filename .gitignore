@@ -1,0 +1,35 @@
+# ---- Fontes e dados do Pedro (nunca vão para o GitHub)
+/biblioteca/
+/watch_folder*/
+/nao_processados/
+/Grove html/
+/library.bib
+/*.pdf
+/*.bib
+
+# ---- Diário de trabalho (só neste Mac)
+CLAUDE.local.md
+
+# ---- Base de dados, cópias, testes, registos e ficheiros de trabalho
+/app/pb_data/
+/app/pb_data_danificada*/
+/app/.teste/
+/app/registos/
+/app/cache/
+/app/dados/
+
+# ---- Programas e modelos descarregados (o instalar.sh volta a buscá-los)
+/app/bin/
+/app/modelos/
+/app/tessdata/
+node_modules/
+
+# ---- Segredos locais (criados pelo instalar.sh)
+/app/.segredo
+/app/.servico.json
+# (preferência local: o TINCTORIS só abre neste Mac)
+/app/.so_local
+
+# ---- Lixo do sistema
+.DS_Store
+*.log

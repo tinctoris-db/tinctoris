@@ -1,0 +1,36 @@
+{
+  "_nota": "Fonte dos créditos: a app mostra-os em Definições e «node app/worker/src/creditos.js» gera o CREDITOS.md. Testers só com nome e consentimento («Aceito aparecer nos créditos»).",
+  "nota": "Pedro Sousa Silva (ESMAE – Politécnico do Porto), com assistência do Claude (Anthropic).",
+  "codigo": [
+    {
+      "nome": "Pedro Sousa Silva",
+      "onde": "Desde 0.9.0-beta",
+      "alteracoes": [
+        { "versao": "0.9.0-beta", "texto": "Nome TINCTORIS e identidade a preto e branco" },
+        { "versao": "0.9.0-beta", "texto": "Licença aberta (AGPL) e forma de citar o programa" },
+        { "versao": "0.9.0-beta", "texto": "Botão de comentários, boas-vindas e instalação para os testers" }
+      ]
+    }
+  ],
+  "traducao": [],
+  "testers": [],
+  "projetos": [
+    { "nome": "RISM", "papel": "fontes musicais" },
+    { "nome": "DIAMM", "papel": "música medieval" },
+    { "nome": "IMSLP", "papel": "partituras" },
+    { "nome": "PEM e Cantus", "papel": "canto e polifonia" },
+    { "nome": "Gallica", "papel": "Bibliothèque nationale de France" },
+    { "nome": "BSB e K10plus", "papel": "bibliotecas alemãs" },
+    { "nome": "BNP / PORBASE", "papel": "Biblioteca Nacional de Portugal" },
+    { "nome": "Europeana", "papel": "património digital europeu" },
+    { "nome": "CrossRef, OpenAlex e Open Library", "papel": "publicações modernas" },
+    { "nome": "MusicBrainz", "papel": "gravações" },
+    { "nome": "RCAAP e RECIPP", "papel": "repositórios académicos" },
+    { "nome": "Bach digital", "papel": "fontes de J. S. Bach" },
+    { "nome": "PocketBase", "papel": "base de dados" },
+    { "nome": "Tesseract", "papel": "reconhecimento de texto" },
+    { "nome": "citation-js e CSL", "papel": "estilos de citação" },
+    { "nome": "Ollama e Qwen3-VL", "papel": "IA local" },
+    { "nome": "Inter", "papel": "tipo de letra, de Rasmus Andersson" }
+  ]
+}
