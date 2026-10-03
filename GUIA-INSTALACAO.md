@@ -2,6 +2,8 @@
 
 *Tratados, Inventários, Notação, Códices, Textos, Organologia, Registos, Iconografia e Sumários.*
 
+*English: [installation guide](INSTALL.md).*
+
 O TINCTORIS é uma base de dados de fontes para musicologia, investigação artística e ensino: manuscritos, impressos,
 partituras, gravações, instrumentos, iconografia. Cada pessoa instala-o no seu Mac e tem a sua própria biblioteca.
 

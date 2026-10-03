@@ -11,6 +11,7 @@ instrumentos, fontes digitais, e a qualquer tipo novo que queira criar.
 **Instalar (alunos e colegas, versão beta):** ver o [guia de instalação](GUIA-INSTALACAO.md) — uma linha no
 Terminal de um Mac com processador Apple. Licença: [AGPL 3.0](LICENSE) (programa) e [CC BY-SA 4.0](LICENSE-docs.md)
 (este manual); [créditos](CREDITOS.md); [como citar](CITATION.cff); [como colaborar](CONTRIBUTING.md).
+English: [manual](README.en.md), [installation guide](INSTALL.md).
 
 Tudo vive na pasta onde o TINCTORIS foi instalado (pode ser um disco externo):
 
@@ -107,8 +108,8 @@ biblioteca:
    Se a identificação não for segura, o ficheiro vai para `_por_rever`.
 8. **Faz OCR** (reconhecimento de texto), mas **só depois de a fonte estar
    identificada** e **nunca em partituras** (o OCR lê texto, não notas). Assim o
-   Mac não fica ocupado durante horas com documentos ainda por rever.
-   segundo plano, para poder pesquisar dentro deles.
+   Mac não fica ocupado durante horas com documentos ainda por rever. O OCR corre em
+   segundo plano, para poder pesquisar dentro dos documentos.
 
 O ficheiro é **movido**, não copiado: a `watch_folder` fica vazia, e as pastas
 que lá largou são apagadas quando ficam vazias.
@@ -444,13 +445,18 @@ as fontes e notas, e serve para filtrar por finalidade.
 
 ## 8. Usar no iPad, telemóvel ou outro computador
 
-Com a biblioteca a correr, abra **Atividade**: lá aparece o endereço para a rede
+Instalado com o guia de instalação, o TINCTORIS **só abre no próprio Mac**. Para o usar noutros aparelhos:
+**Definições** → «A sua biblioteca» → desligar «Abrir só neste Mac» e voltar a abrir o TINCTORIS.
+
+Com o acesso pela rede ligado e a biblioteca a correr, abra **Atividade**: lá aparece o endereço para a rede
 de casa (por exemplo `http://192.168.1.69:8090`). Abra-o no navegador de
 qualquer dispositivo ligado à **mesma rede Wi-Fi** e entre com a sua conta. A
 biblioteca não fica acessível a partir da internet.
 
 ## 9. Definições
 
+- **O seu nome:** o dono da biblioteca. Num PDF que digitalizou não é o autor; numa transcrição feita num editor de
+  partituras é o editor. Várias formas do nome: separe-as com «;».
 - **Padrão do nome do ficheiro:** por omissão `{data}_{AUTOR}_{Titulo}`. Também
   pode usar `{ano}`, `{autor}`, `{tipo}`, `{natureza}`, `{contexto}` e
   `{editora}`.
