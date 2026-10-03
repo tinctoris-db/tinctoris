@@ -482,6 +482,9 @@ biblioteca não fica acessível a partir da internet.
     e, em «Credenciais», carregar em «Criar credenciais» → «Chave de API». Copiar a
     chave para **Definições → Chave Google Books**.
 
+A página **Acerca e ajuda** (último item do menu) mostra a versão, a licença, a ligação ao código-fonte, como citar o
+TINCTORIS (pronto a copiar), as ligações para os manuais e guias, o botão «Enviar comentário» e os créditos.
+
 ## 10. Cópias de segurança
 
 - A base de dados faz **uma cópia automática de hora a hora**, enquanto a

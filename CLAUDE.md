@@ -66,7 +66,7 @@ artística e ensino. Programa e dados vivem na pasta de instalação. Manual: `R
   organização «tinctoris-db» (repositório tinctoris-db/tinctoris) licença AGPL-3.0-or-later, documentação CC BY-SA 4.0,
   «© 2026 Pedro Sousa Silva e contribuidores do TINCTORIS»; CITATION.cff + DOI Zenodo; comentários por botão → Google
   Forms (`app/pb_public/formulario.json`); erros automáticos só com consentimento (depois de 10/10).
-- **Créditos:** fonte única `app/pb_public/creditos.json` (a app mostra-os em Definições); `node app/worker/src/creditos.js`
+- **Créditos:** fonte única `app/pb_public/creditos.json` (a app mostra-os em «Acerca e ajuda»); `node app/worker/src/creditos.js`
   gera o `CREDITOS.md`. A cada contribuição aceite, acrescentar nome + frase simples; o Pedro revê antes de cada versão.
 - **Acesso pela rede:** com `app/.so_local` o PocketBase só escuta em 127.0.0.1 (o instalador cria-o; muda-se em
   Definições, aplica-se ao reiniciar). Sem o ficheiro continua aberto à rede local, com conta.

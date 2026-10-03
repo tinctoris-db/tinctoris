@@ -71,8 +71,8 @@ HTML, BibTeX, RIS or CSL-JSON (for Zotero, Mendeley or EndNote).
 This is a beta: your feedback decides what improves. At the bottom of the sidebar, **«Enviar comentário»** (Send
 feedback) opens a short bilingual form (doesn't work / could work better / missing feature / how do I…?). The
 programme and macOS versions and the latest technical errors are filled in for you; titles, file names and sources
-are never sent. Name and email are optional. If you wish, you can be listed in the **Créditos** (Credits), under
-Settings.
+are never sent. Name and email are optional. If you wish, you can be listed in the **Créditos** (Credits), in the «Acerca e ajuda» (About and help) menu item,
+which also shows the version, how to cite TINCTORIS and links to the manual and guides.
 
 ---
 

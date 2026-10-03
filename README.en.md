@@ -414,7 +414,10 @@ network** and log in with your account. The library is not reachable from the in
     <https://console.cloud.google.com> with a Google account, create a project, enable the «Books API» (under «APIs &
     Services») and, under «Credentials», press «Create credentials» → «API key». Copy the key into **Definições → Chave
     Google Books**.
-- **About and credits:** «Acerca do TINCTORIS» (version, licence, how to cite) and «Créditos» (Credits).
+
+The **Acerca e ajuda** (About and help) page, the last item in the menu, shows the version, licence, source code link,
+how to cite TINCTORIS (ready to copy), links to the manuals and guides, the «Enviar comentário» (Send feedback)
+button and the credits.
 
 ## 10. Backups
 

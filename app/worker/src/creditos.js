@@ -1,5 +1,5 @@
 // Gera o CREDITOS.md (raiz do repositório) a partir de app/pb_public/creditos.json, a mesma fonte que a app mostra
-// em Definições → Créditos. Correr depois de acrescentar uma contribuição:  node app/worker/src/creditos.js
+// em «Acerca e ajuda» → Créditos. Correr depois de acrescentar uma contribuição:  node app/worker/src/creditos.js
 import fs from 'node:fs'
 import path from 'node:path'
 import { PASTAS } from './config.js'

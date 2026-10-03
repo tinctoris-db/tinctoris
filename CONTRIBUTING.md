@@ -48,7 +48,7 @@ autor sobre o que escreveu (ver `COPYRIGHT.md`).
 ## Créditos
 
 Cada contribuição aceite entra nos créditos, com o seu nome e uma frase simples sobre o que mudou. Os créditos estão
-em `app/pb_public/creditos.json` (a app mostra-os em Definições → Créditos) e o `CREDITOS.md` é gerado a partir dele
+em `app/pb_public/creditos.json` (a app mostra-os em «Acerca e ajuda» → Créditos) e o `CREDITOS.md` é gerado a partir dele
 com `node app/worker/src/creditos.js`. Os beta testers só aparecem se o pedirem no formulário.
 
 ## Convivência

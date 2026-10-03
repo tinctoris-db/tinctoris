@@ -65,7 +65,8 @@ guarda-a em texto, RTF, HTML, BibTeX, RIS ou CSL-JSON (para Zotero, Mendeley ou 
 Esta é uma versão beta: os seus comentários decidem o que melhora. No fundo da barra lateral, **«Enviar comentário»**
 abre um formulário curto (não funciona / podia funcionar melhor / falta fazer / dúvida de utilização). A versão
 do programa e do macOS e os últimos erros técnicos vão preenchidos; nunca vão títulos, nomes de ficheiros nem fontes.
-Nome e email são opcionais. Quem quiser pode aparecer nos **Créditos** (Definições).
+Nome e email são opcionais. Quem quiser pode aparecer nos **Créditos** (menu «Acerca e ajuda»). Nessa página estão também a versão, como citar o
+TINCTORIS e as ligações para o manual e os guias.
 
 ---
 

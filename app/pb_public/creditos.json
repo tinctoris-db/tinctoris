@@ -1,5 +1,5 @@
 {
-  "_nota": "Fonte dos créditos: a app mostra-os em Definições e «node app/worker/src/creditos.js» gera o CREDITOS.md. Testers só com nome e consentimento («Aceito aparecer nos créditos»).",
+  "_nota": "Fonte dos créditos: a app mostra-os em «Acerca e ajuda» e «node app/worker/src/creditos.js» gera o CREDITOS.md. Testers só com nome e consentimento («Aceito aparecer nos créditos»).",
   "nota": "Pedro Sousa Silva (ESMAE – Politécnico do Porto), com assistência do Claude (Anthropic).",
   "codigo": [
     {

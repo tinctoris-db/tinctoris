@@ -276,6 +276,7 @@ async function ecraEntrada() {
 // Estrutura da aplicação
 
 const VERSAO = '0.9.0-beta'
+const REPOSITORIO = 'https://github.com/tinctoris-db/tinctoris'
 
 const VISTAS = {
   fontes: { rotulo: 'Fontes', fn: () => vistaFontes() },
@@ -286,6 +287,7 @@ const VISTAS = {
   tipos: { rotulo: 'Tipos de fonte', fn: () => vistaTipos() },
   atividade: { rotulo: 'Atividade', fn: () => vistaAtividade() },
   definicoes: { rotulo: 'Definições', fn: () => vistaDefinicoes() },
+  acerca: { rotulo: 'Acerca e ajuda', fn: () => vistaAcerca() },
 }
 
 async function carregarTipos() {
@@ -316,7 +318,13 @@ async function atualizarCarimbos() {
   try {
     const i = await pb.send('/api/bib/info', {})
     el.innerHTML = ''
-    anexar(el, h('div', {}, h('strong', {}, 'Dados'), ' · ', dataHora(i.dados)), h('div', {}, h('strong', {}, 'Código'), ' · ', dataHora(i.codigo)))
+    anexar(
+      el,
+      h('div', { class: 'versao-app' }, h('strong', {}, 'Versão'), ' · ', VERSAO),
+      h('div', { class: 'carimbos-titulo' }, 'Última atualização'),
+      h('div', {}, h('strong', {}, 'Dados'), ' · ', dataHora(i.dados)),
+      h('div', {}, h('strong', {}, 'Código'), ' · ', dataHora(i.codigo))
+    )
     el.title = 'Última atualização dos dados (fontes, notas, tipos) e do programa'
   } catch (_) {}
 }
@@ -551,7 +559,8 @@ async function montarApp() {
       h('div', { class: 'separador' }),
       h('a', { href: '#/tipos', 'data-vista': 'tipos' }, 'Tipos de fonte'),
       h('a', { href: '#/atividade', 'data-vista': 'atividade' }, 'Atividade'),
-      h('a', { href: '#/definicoes', 'data-vista': 'definicoes' }, 'Definições')
+      h('a', { href: '#/definicoes', 'data-vista': 'definicoes' }, 'Definições'),
+      h('a', { href: '#/acerca', 'data-vista': 'acerca' }, 'Acerca e ajuda')
     ),
     h('div', { class: 'carimbos', id: 'carimbos', style: 'margin-top:auto' }),
     h(
@@ -2003,6 +2012,50 @@ async function caixaCreditos() {
   return caixa
 }
 
+// Página «Acerca e ajuda»: versão, licença, como citar, ajuda (manuais no GitHub público) e créditos
+function vistaAcerca() {
+  const p = principal()
+  const ligacao = (rotulo, caminho) => h('li', {}, h('a', { href: `${REPOSITORIO}/blob/main/${caminho}`, target: '_blank', rel: 'noopener' }, rotulo))
+  const citacao = `Sousa Silva, P. (2026). TINCTORIS: Treatises, Inventories, Notation, Codices, Texts, Organology, Records, Iconography and Sources (Versão ${VERSAO}) [Software]. ${REPOSITORIO}`
+  const copiarCitacao = async () => {
+    try {
+      await navigator.clipboard.writeText(citacao)
+      toast('Referência copiada.')
+    } catch (e) {
+      toast('Não foi possível copiar: ' + mensagemErro(e), true)
+    }
+  }
+  const creditos = h('div', {}, h('div', { class: 'caixa' }, 'A carregar…'))
+  caixaCreditos().then((c) => creditos.replaceChildren(c))
+  anexar(
+    p,
+    h('div', { class: 'cabecalho' }, h('div', {}, h('h1', {}, 'Acerca e ajuda'), h('p', { class: 'subtitulo' }, 'Versão, licença, como citar, ajuda e créditos.'))),
+    h('h2', {}, 'TINCTORIS'),
+    h(
+      'div',
+      { class: 'caixa' },
+      h('p', { style: 'margin-top:0' }, h('strong', {}, `Versão ${VERSAO}`), ' — Tratados, Inventários, Notação, Códices, Textos, Organologia, Registos, Iconografia e Sumários.'),
+      h('p', {}, 'O nome homenageia Johannes Tinctoris (c. 1435–1511), autor do ', h('em', {}, 'Terminorum musicae diffinitorium'), ' (c. 1495), o primeiro dicionário musical impresso.'),
+      h('p', {}, '© 2026 Pedro Sousa Silva e contribuidores do TINCTORIS. Programa livre, com licença ', h('a', { href: 'https://www.gnu.org/licenses/agpl-3.0.html', target: '_blank', rel: 'noopener' }, 'GNU AGPL 3.0 ou posterior'), '; documentação com licença ', h('a', { href: 'https://creativecommons.org/licenses/by-sa/4.0/deed.pt', target: '_blank', rel: 'noopener' }, 'CC BY-SA 4.0'), '. Sem qualquer garantia.'),
+      h('p', { style: 'margin-bottom:0' }, 'Código-fonte: ', h('a', { href: REPOSITORIO, target: '_blank', rel: 'noopener' }, REPOSITORIO.replace('https://', '')), '. Componentes de terceiros e respetivas licenças: ', h('a', { href: `${REPOSITORIO}/blob/main/TERCEIROS.md`, target: '_blank', rel: 'noopener' }, 'TERCEIROS.md'), '.')
+    ),
+    h('h2', {}, 'Como citar'),
+    h('div', { class: 'caixa' }, h('p', { class: 'citacao-programa', style: 'margin-top:0' }, citacao), h('button', { class: 'botao pequeno', onclick: copiarCitacao }, 'Copiar referência')),
+    h('h2', {}, 'Ajuda'),
+    h(
+      'div',
+      { class: 'caixa' },
+      h('ul', { class: 'ligacoes-ajuda' }, ligacao('Manual (português)', 'README.md'), ligacao('Manual (English)', 'README.en.md'), ligacao('Guia de instalação', 'GUIA-INSTALACAO.md'), ligacao('Installation guide (English)', 'INSTALL.md'), ligacao('Como colaborar', 'CONTRIBUTING.md')),
+      h('p', { class: 'ajuda' }, 'As ligações abrem no GitHub (é preciso internet) e mostram sempre a versão mais recente.'),
+      h('h3', {}, 'Algo não funciona, podia funcionar melhor ou faz falta?'),
+      h('p', { style: 'margin-top:0' }, 'Envie um comentário: abre um formulário curto, já com a versão do programa e do macOS e os últimos erros técnicos (nunca títulos, nomes de ficheiros nem fontes). Também é aqui que se pede ajuda.'),
+      h('button', { class: 'botao', onclick: enviarComentario }, 'Enviar comentário')
+    ),
+    h('h2', {}, 'Créditos'),
+    creditos
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Exportar bibliografia
 
@@ -2809,8 +2862,6 @@ async function vistaDefinicoes() {
       toast(mensagemErro(e), true)
     }
   })
-  const creditos = h('div', {}, h('div', { class: 'caixa' }, 'A carregar…'))
-  caixaCreditos().then((c) => creditos.replaceChildren(c))
 
   anexar(p, 
     h('div', { class: 'cabecalho' }, h('div', {}, h('h1', {}, 'Definições'), h('p', { class: 'subtitulo' }, 'Organização dos ficheiros, OCR e pesquisa de metadados.')), h('button', { class: 'botao primario', onclick: guardar }, 'Guardar definições')),
@@ -2893,17 +2944,6 @@ async function vistaDefinicoes() {
       h('div', { class: 'grelha', style: 'margin-top:10px' }, campo('Modelo', texto('ia_modelo')), campo('Endereço do Ollama', texto('ia_url'))),
       h('p', { class: 'ajuda' }, 'Gratuita e privada: o modelo corre neste Mac e nada é enviado para fora. Só é usada quando as regras e os identificadores (DOI, ISBN, capa do JSTOR) não chegam; leva ~15 segundos por documento, em segundo plano.')
     ),
-    h('h2', {}, 'Acerca do TINCTORIS'),
-    h(
-      'div',
-      { class: 'caixa' },
-      h('p', { style: 'margin-top:0' }, h('strong', {}, `TINCTORIS ${VERSAO}`), ' — Tratados, Inventários, Notação, Códices, Textos, Organologia, Registos, Iconografia e Sumários.'),
-      h('p', {}, 'O nome homenageia Johannes Tinctoris (c. 1435–1511), autor do ', h('em', {}, 'Terminorum musicae diffinitorium'), ' (c. 1495), o primeiro dicionário musical impresso.'),
-      h('p', {}, '© 2026 Pedro Sousa Silva e contribuidores do TINCTORIS. Programa livre, com licença ', h('a', { href: 'https://www.gnu.org/licenses/agpl-3.0.html', target: '_blank', rel: 'noopener' }, 'GNU AGPL 3.0 ou posterior'), '; documentação com licença ', h('a', { href: 'https://creativecommons.org/licenses/by-sa/4.0/deed.pt', target: '_blank', rel: 'noopener' }, 'CC BY-SA 4.0'), '. Sem qualquer garantia.'),
-      h('p', { class: 'ajuda', style: 'margin-bottom:0' }, 'Para citar: Sousa Silva, Pedro. ', h('em', {}, 'TINCTORIS'), `, versão ${VERSAO}. Componentes de terceiros e respetivas licenças: ficheiro TERCEIROS.md.`)
-    ),
-    h('h2', {}, 'Créditos'),
-    creditos,
     h('h2', {}, 'Manutenção'),
     h(
       'div',
