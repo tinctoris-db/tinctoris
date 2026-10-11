@@ -1,0 +1,38 @@
+{
+ "url": "https://api.deezer.com/search/album?q=a%20garden%20of%20black%20flowers%20astrophil%20%26%20stella&limit=10",
+ "status": 200,
+ "corpo": {
+  "data": [
+   {
+    "id": 731753931,
+    "title": "A Garden of Black Flowers",
+    "link": "https://www.deezer.com/album/731753931",
+    "cover": "https://api.deezer.com/album/731753931/image",
+    "cover_small": "https://cdn-images.dzcdn.net/images/cover/13a7a74b68549d12de8362574fe77a22/56x56-000000-80-0-0.jpg",
+    "cover_medium": "https://cdn-images.dzcdn.net/images/cover/13a7a74b68549d12de8362574fe77a22/250x250-000000-80-0-0.jpg",
+    "cover_big": "https://cdn-images.dzcdn.net/images/cover/13a7a74b68549d12de8362574fe77a22/500x500-000000-80-0-0.jpg",
+    "cover_xl": "https://cdn-images.dzcdn.net/images/cover/13a7a74b68549d12de8362574fe77a22/1000x1000-000000-80-0-0.jpg",
+    "md5_image": "13a7a74b68549d12de8362574fe77a22",
+    "genre_id": 98,
+    "nb_tracks": 14,
+    "record_type": "album",
+    "tracklist": "https://api.deezer.com/album/731753931/tracks",
+    "explicit_lyrics": false,
+    "artist": {
+     "id": 312058321,
+     "name": "astrophil & stella",
+     "link": "https://www.deezer.com/artist/312058321",
+     "picture": "https://api.deezer.com/artist/312058321/image",
+     "picture_small": "https://cdn-images.dzcdn.net/images/artist/13a7a74b68549d12de8362574fe77a22/56x56-000000-80-0-0.jpg",
+     "picture_medium": "https://cdn-images.dzcdn.net/images/artist/13a7a74b68549d12de8362574fe77a22/250x250-000000-80-0-0.jpg",
+     "picture_big": "https://cdn-images.dzcdn.net/images/artist/13a7a74b68549d12de8362574fe77a22/500x500-000000-80-0-0.jpg",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/13a7a74b68549d12de8362574fe77a22/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/artist/312058321/top?limit=50",
+     "type": "artist"
+    },
+    "type": "album"
+   }
+  ],
+  "total": 1
+ }
+}

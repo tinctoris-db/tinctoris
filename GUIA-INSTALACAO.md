@@ -11,7 +11,7 @@ partituras, gravações, instrumentos, iconografia. Cada pessoa instala-o no seu
 
 - **Mac com processador Apple** (M1 ou mais recente). Para confirmar:  → Acerca deste Mac → «Chip: Apple M…».
   Num Mac com processador Intel, a versão beta não funciona: nas aulas, trabalhe em par com um colega.
-- **Conta de administrador** no Mac e a respetiva palavra-passe (num Mac pessoal, é normalmente a sua).
+- **Conta de administrador** no Mac e a respectiva palavra-passe (num Mac pessoal, é normalmente a sua).
 - **Ligação à internet** e **15 a 25 minutos** (a primeira instalação descarrega várias peças).
 - Espaço livre: cerca de 3 GB, mais 6 GB se quiser a IA local, mais o espaço das suas fontes.
 
@@ -47,7 +47,7 @@ Se algo falhar, o instalador abre o formulário de comentários já com a descri
 ## Abrir e fechar
 
 - **Abrir:** duplo clique em **«Iniciar TINCTORIS»**, na pasta TINCTORIS. Abre-se uma janela do Terminal (deixe-a
-  aberta) e o TINCTORIS no navegador. Se houver uma versão nova, pergunta antes se quer atualizar.
+  aberta) e o TINCTORIS no navegador. Se houver uma versão nova, pergunta antes se quer actualizar.
 - **Fechar:** feche a janela do Terminal.
 
 Por omissão, o TINCTORIS só abre no seu Mac. Para o abrir também no iPad ou noutro computador da mesma rede Wi-Fi:
@@ -55,8 +55,8 @@ Definições → «A sua biblioteca» → desligar «Abrir só neste Mac», e vo
 
 ## Exportar referências bibliográficas
 
-No ecrã **Fontes**, o botão **«Exportar bibliografia»** exporta as fontes selecionadas (caixas à esquerda de cada
-fonte) ou, sem nenhuma selecionada, todas as da pesquisa atual. Escolha o estilo (APA, Chicago, MLA, Harvard,
+No ecrã **Fontes**, o botão **«Exportar bibliografia»** exporta as fontes seleccionadas (caixas à esquerda de cada
+fonte) ou, sem nenhuma seleccionada, todas as da pesquisa actual. Escolha o estilo (APA, Chicago, MLA, Harvard,
 NP 405, ABNT), a língua dos termos e o formato. **Copiar** põe a lista pronta a colar no Word; **Descarregar ficheiro**
 guarda-a em texto, RTF, HTML, BibTeX, RIS ou CSL-JSON (para Zotero, Mendeley ou EndNote).
 
@@ -65,7 +65,7 @@ guarda-a em texto, RTF, HTML, BibTeX, RIS ou CSL-JSON (para Zotero, Mendeley ou 
 Esta é uma versão beta: os seus comentários decidem o que melhora. No fundo da barra lateral, **«Enviar comentário»**
 abre um formulário curto (não funciona / podia funcionar melhor / falta fazer / dúvida de utilização). A versão
 do programa e do macOS e os últimos erros técnicos vão preenchidos; nunca vão títulos, nomes de ficheiros nem fontes.
-Nome e email são opcionais. Quem quiser pode aparecer nos **Créditos** (menu «Acerca e ajuda»). Nessa página estão também a versão, como citar o
+Nome e email são opcionais. Quem quiser pode aparecer nos **Créditos** (menu «Acerca»). Nessa página estão também a versão, como citar o
 TINCTORIS e as ligações para o manual e os guias.
 
 ---

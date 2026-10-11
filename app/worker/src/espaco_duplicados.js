@@ -12,20 +12,112 @@
 //   pasta "Duplicados AAAA-MM-DD HHhMM" com as mesmas subpastas. Recuperável até o Pedro esvaziar o Lixo.
 //   Nada é apagado aqui. Antes de mover um "seguro", confirma-se outra vez que o equivalente existe.
 // - devolver(): um "por ver" volta à watch folder e passa a ter ficha própria.
+// - Comparar (pedido do Pedro, 4/10): cada "por ver" leva a origem (porque foi posto de parte e com que ficha se
+//   confundiu: registo app/dados/duplicados-origem.jsonl e, para os antigos, o registo do serviço) e a comparação
+//   das páginas com o ficheiro dessa ficha. Páginas iguais → seguro; o ecrã mostra as duas páginas lado a lado.
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { PASTAS, DUPLICADOS, ORIGINAIS } from './config.js'
+import { PASTAS, DUPLICADOS, ORIGINAIS, BIN } from './config.js'
 import { pb, garantirSessao, definicoes } from './pb.js'
 import { log } from './registo.js'
+import { compararFicheiros, maisParecidaPelaCapa, guardarImpressoes } from './duplicados.js'
 
 const RAIZ_DUP = path.join(PASTAS.biblioteca, DUPLICADOS)
 const RESULTADO = path.join(PASTAS.dados, 'verificacao-duplicados.json')
 const CACHE = path.join(PASTAS.app, 'cache', 'hashes-ficheiros.json')
+const ORIGENS = path.join(PASTAS.dados, 'duplicados-origem.jsonl')
+// (o registo do serviço escrito pelo iniciar.sh; a cópia de teste aponta para outro com REGISTO_SERVICO)
+const REGISTO_SERVICO = process.env.REGISTO_SERVICO || path.join(PASTAS.app, 'registos', 'servico.log')
 const LIMITE_OMISSAO = 10 // % do espaço das fontes
+
+// ---------------------------------------------------------------------------
+// Origem: porque está cada ficheiro em _duplicados
+
+// Chamado por quem põe um ficheiro (ou pasta) em _duplicados: { motivo, numero, titulo }
+export function registarOrigem(destino, info) {
+  try {
+    fs.mkdirSync(path.dirname(ORIGENS), { recursive: true })
+    fs.appendFileSync(ORIGENS, JSON.stringify({ ficheiro: rel(destino), quando: new Date().toISOString(), ...info }) + '\n')
+  } catch (e) {
+    log.aviso(`Origem do duplicado não registada: ${e.message}`)
+  }
+}
+
+// Linhas do registo do serviço (antes de 4/10 a origem só ficava lá)
+const LINHAS_DO_REGISTO = [
+  [/Outra cópia de «(.*)» \(#(\d+)\): movida para (_duplicados\/.+)$/, 'mesma_obra'],
+  [/As mesmas fotografias de «(.*)» \(#(\d+)\): movidas para (_duplicados\/.+)$/, 'mesmas_fotografias'],
+  [/Duplicado de um ficheiro de «(.*)»: movido para (_duplicados\/.+)$/, 'copia_exata_extra'],
+  [/Duplicado de «(.*)»: movido para (_duplicados\/.+)$/, 'copia_exata'],
+  [/Duplicado #\d+ retirado a favor de #(\d+) «(.*)»: ficheiro em (_duplicados\/.+)$/, 'quase_igual', true],
+  [/Originais repetidos: .* → (_duplicados\/.+)$/, 'originais_repetidos'],
+]
+
+function lerOrigens() {
+  const origens = new Map()
+  try {
+    for (const l of fs.readFileSync(REGISTO_SERVICO, 'utf8').split('\n')) {
+      if (!l.includes('_duplicados/')) continue
+      for (const [re, motivo, numeroPrimeiro] of LINHAS_DO_REGISTO) {
+        const m = re.exec(l.trim())
+        if (!m) continue
+        const g = m.slice(1)
+        const ficheiro = g.pop()
+        const [titulo, numero] = numeroPrimeiro ? [g[1], g[0]] : g
+        origens.set(ficheiro, { motivo, titulo, numero: numero ? Number(numero) : undefined })
+        break
+      }
+    }
+  } catch (_) {}
+  try {
+    for (const l of fs.readFileSync(ORIGENS, 'utf8').split('\n')) {
+      if (!l.trim()) continue
+      try {
+        const o = JSON.parse(l)
+        origens.set(o.ficheiro, o)
+      } catch (_) {}
+    }
+  } catch (_) {}
+  return origens
+}
+
+// Origem de um ficheiro de _duplicados (ou da pasta onde está: "X - originais/página.jpg")
+function origemDe(origens, relativo) {
+  for (let p = relativo; p.includes('/'); p = p.slice(0, p.lastIndexOf('/'))) if (origens.has(p)) return origens.get(p)
+  return null
+}
+
+// Página p de um ficheiro (PDF ou imagem) em PNG pequeno, como endereço data: para o ecrã
+async function imagemPagina(abs, p = 1) {
+  const executar = (cmd, args) =>
+    new Promise((ok) => {
+      const pr = spawn(cmd, args)
+      const partes = []
+      const t = setTimeout(() => pr.kill('SIGKILL'), 60000)
+      pr.stdout.on('data', (d) => partes.push(d))
+      pr.on('error', () => (clearTimeout(t), ok(null)))
+      pr.on('close', (c) => (clearTimeout(t), ok(c === 0 ? Buffer.concat(partes) : null)))
+    })
+  if (/\.pdf$/i.test(abs)) {
+    const png = await executar(BIN.pdftoppm, ['-png', '-scale-to', '700', '-f', String(p), '-l', String(p), abs])
+    return png?.length ? 'data:image/png;base64,' + png.toString('base64') : null
+  }
+  if (/\.(jpe?g|png|tiff?|gif|heic|webp|bmp)$/i.test(abs)) {
+    const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'pagina-'))
+    try {
+      const saida = path.join(tmp, 'p.jpg')
+      await executar('/usr/bin/sips', ['-s', 'format', 'jpeg', '-Z', '700', abs, '--out', saida])
+      return fs.existsSync(saida) ? 'data:image/jpeg;base64,' + (await fsp.readFile(saida)).toString('base64') : null
+    } finally {
+      await fsp.rm(tmp, { recursive: true, force: true })
+    }
+  }
+  return null
+}
 
 const rel = (p) => path.relative(PASTAS.biblioteca, p).split(path.sep).join('/')
 const dentroDe = (p, dir) => path.resolve(p).startsWith(path.resolve(dir) + path.sep)
@@ -82,7 +174,8 @@ let cache = null
 function lerCache() {
   if (!cache) {
     try {
-      cache = JSON.parse(fs.readFileSync(CACHE, 'utf8'))
+      // (um ficheiro com «null» — gravado sem a cache carregada, até 4/10 — fazia falhar todos os hashes em silêncio)
+      cache = JSON.parse(fs.readFileSync(CACHE, 'utf8')) || {}
     } catch (_) {
       cache = {}
     }
@@ -90,6 +183,7 @@ function lerCache() {
   return cache
 }
 async function gravarCache() {
+  if (!cache) return
   await fsp.mkdir(path.dirname(CACHE), { recursive: true })
   await fsp.writeFile(CACHE + '.tmp', JSON.stringify(cache))
   await fsp.rename(CACHE + '.tmp', CACHE)
@@ -136,7 +230,7 @@ export function verificar() {
 async function executarVerificacao() {
   await garantirSessao()
   // Fichas: hash do ficheiro principal e dos adicionais; PDFs quase iguais retirados; nomes conhecidos
-  const fichas = await pb.collection('fontes').getFullList({ fields: 'numero,titulo,ficheiro,hash,ficheiros_extra,ficheiro_original,metadados' })
+  const fichas = await pb.collection('fontes').getFullList({ fields: 'id,numero,titulo,ficheiro,hash,paginas,ficheiros_extra,ficheiro_original,metadados' })
   const porHash = new Map()
   const retirados = new Map()
   const porNome = new Map()
@@ -196,7 +290,7 @@ async function executarVerificacao() {
     const base = { ficheiro: rel(p), tamanho, hash: h }
     const eq = h && (await naBiblioteca(h))
     if (eq) {
-      seguros.push({ ...base, motivo: 'cópia exata', ...eq })
+      seguros.push({ ...base, motivo: 'cópia exacta', ...eq })
       continue
     }
     const r = retirados.get(rel(p))
@@ -214,12 +308,95 @@ async function executarVerificacao() {
     porVer.push({ ...base, talvez })
   }
   await gravarCache()
+
+  // Porque está aqui e com que ficha se confundiu; páginas iguais às dessa ficha → seguro
+  emCurso.fase = 'A comparar as páginas com as fichas'
+  emCurso.feitos = 0
+  emCurso.total = porVer.length
+  const comparados = await compararComFichas(porVer, fichas, { aoProgresso: (n) => (emCurso.feitos = n) })
+  const iguais = comparados.filter((x) => x.comparacao?.resultado === 'igual')
+  for (const x of iguais) seguros.push({ ficheiro: x.ficheiro, tamanho: x.tamanho, hash: x.hash, motivo: 'páginas iguais', equivalente: x.ficha.ficheiro, numero: x.ficha.numero })
+  porVer.length = 0
+  porVer.push(...comparados.filter((x) => x.comparacao?.resultado !== 'igual'))
   porVer.sort((a, b) => b.tamanho - a.tamanho) // os maiores primeiro
   await fsp.mkdir(path.dirname(RESULTADO), { recursive: true })
   await fsp.writeFile(RESULTADO + '.tmp', JSON.stringify({ feita_em: new Date().toISOString(), seguros, por_ver: porVer, decididos: lerResultado()?.decididos || {} }))
   await fsp.rename(RESULTADO + '.tmp', RESULTADO)
   await medir()
   log.info(`Verificação de _duplicados: ${seguros.length} seguros, ${porVer.length} por ver`)
+}
+
+// Para cada "por ver": origem (registo), a ficha com que se confundiu e a comparação das páginas com o ficheiro dela.
+// Sem ficha conhecida: a ficha com o mesmo título (se só houver uma) ou, num PDF, a de 1.ª página mais parecida.
+// Só lê (serve à verificação e à simulação do comando rever_outras_copias.js).
+export async function compararComFichas(porVer, fichas, { aoProgresso = () => {} } = {}) {
+  const origens = lerOrigens()
+  const porNumero = new Map(fichas.map((f) => [f.numero, f]))
+  const tituloNorm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const porTitulo = new Map()
+  for (const f of fichas) if (f.ficheiro) porTitulo.set(tituloNorm(f.titulo), [...(porTitulo.get(tituloNorm(f.titulo)) || []), f])
+  const chaveDe = (abs, h) => {
+    try {
+      return h ? `${h}:${fs.statSync(abs).size}` : undefined
+    } catch (_) {
+      return undefined
+    }
+  }
+  let porChave = null // (só se for preciso: hash:tamanho → numero, para a pista pela capa)
+  const saida = []
+  let i = 0
+  for (const x of porVer) {
+    aoProgresso(++i, porVer.length)
+    const abs = path.join(PASTAS.biblioteca, x.ficheiro)
+    const origem = origemDe(origens, x.ficheiro)
+    let ficha = origem?.numero ? porNumero.get(origem.numero) : null
+    let pista = ficha ? 'registo' : ''
+    if (!ficha && origem?.titulo) {
+      const mesmos = porTitulo.get(tituloNorm(origem.titulo)) || []
+      if (mesmos.length === 1) (ficha = mesmos[0]), (pista = 'título')
+    }
+    if (!ficha && /\.pdf$/i.test(x.ficheiro)) {
+      if (!porChave) {
+        porChave = new Map()
+        for (const f of fichas) {
+          if (!f.ficheiro || !f.hash || !/\.pdf$/i.test(f.ficheiro)) continue
+          const k = chaveDe(path.join(PASTAS.biblioteca, f.ficheiro), f.hash)
+          if (k) porChave.set(k, f.numero)
+        }
+      }
+      const parecida = await maisParecidaPelaCapa({ abs, chave: chaveDe(abs, x.hash) }, porChave).catch(() => null)
+      if (parecida) (ficha = porNumero.get(parecida.numero)), (pista = '1.ª página parecida')
+    }
+    if (!ficha && x.talvez?.length) (ficha = porNumero.get(x.talvez[0])), (pista = 'nome do ficheiro parecido')
+    const absFicha = ficha?.ficheiro ? path.join(PASTAS.biblioteca, ficha.ficheiro) : ''
+    let comparacao = null
+    if (absFicha && fs.existsSync(absFicha) && fs.existsSync(abs)) {
+      comparacao = await compararFicheiros({ abs, chave: chaveDe(abs, x.hash) }, { abs: absFicha, chave: chaveDe(absFicha, ficha.hash) }).catch(() => null)
+    }
+    saida.push({
+      ...x,
+      origem: origem ? { motivo: origem.motivo, titulo: origem.titulo, numero: origem.numero } : null,
+      ficha: ficha ? { id: ficha.id, numero: ficha.numero, titulo: ficha.titulo, ficheiro: ficha.ficheiro, pista } : null,
+      comparacao,
+    })
+  }
+  await guardarImpressoes()
+  return saida
+}
+
+// Duas páginas lado a lado (a página p do ficheiro de _duplicados e a mesma da ficha com que se confundiu)
+export async function compararPagina({ ficheiro, numero, p = 1 }) {
+  const abs = path.join(PASTAS.biblioteca, String(ficheiro || ''))
+  if (!dentroDe(abs, RAIZ_DUP) || !fs.existsSync(abs)) throw new Error('Ficheiro não encontrado em _duplicados.')
+  const pg = Math.max(1, Number(p) || 1)
+  const res = { duplicado: await imagemPagina(abs, pg) }
+  if (numero) {
+    await garantirSessao()
+    const f = await pb.collection('fontes').getFirstListItem(pb.filter('numero = {:n}', { n: Number(numero) }), { fields: 'id,numero,titulo,ficheiro' })
+    const absFicha = f.ficheiro ? path.join(PASTAS.biblioteca, f.ficheiro) : ''
+    if (absFicha && dentroDe(absFicha, PASTAS.biblioteca) && fs.existsSync(absFicha)) res.ficha = await imagemPagina(absFicha, pg)
+  }
+  return res
 }
 
 // Lista "por ver" para o ecrã (os maiores primeiro), sem os que o Pedro mandou manter
@@ -233,7 +410,8 @@ export function porVer({ desde = 0, quantos = 50 } = {}) {
 // ---------------------------------------------------------------------------
 // Lixo e devolução
 
-function pastaDoLixo() {
+// (nome: «Duplicados» ou «Fontes apagadas»; cada vez uma pasta nova com a data e a hora)
+export function pastaDoLixo(nome = 'Duplicados') {
   const uid = os.userInfo().uid
   const volume = (/^(\/Volumes\/[^/]+)/.exec(PASTAS.biblioteca) || [])[1]
   // (no disco externo, o Lixo do Mac para esse disco é .Trashes/<uid>; mover para lá é instantâneo)
@@ -242,7 +420,7 @@ function pastaDoLixo() {
   if (!fs.existsSync(lixo)) throw new Error(`Não encontrei o Lixo do Mac em ${lixo}.`)
   const d = new Date()
   const carimbo = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`
-  return path.join(lixo, `Duplicados ${carimbo}`)
+  return path.join(lixo, `${nome} ${carimbo}`)
 }
 
 async function moverPara(abs, destinoDir, relativo) {

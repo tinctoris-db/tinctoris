@@ -318,16 +318,114 @@ export function analisarCapa(paginas) {
 
 // ---------------------------------------------------------------------------
 // Capa do JSTOR ("Author(s): …", "Source: …", "Stable URL: …/stable/123")
+// Tudo o que a folha diz conta: revista, volume, número, páginas, editora e, nas recensões, a obra recenseada
+// (Pedro, 5/10/2026, #0470). O número estável do JSTOR NÃO é um DOI: «10.2307/<número>» só existe para alguns artigos
+// e é confirmado no CrossRef antes de ser gravado (doiPossivel).
 
-export function analisarJstor(texto) {
+const ROTULO_JSTOR = /^(Author\(s\)|Review by|Reviewed work\(s\)|Review|Source|Published by|Stable URL|Accessed)\s*:\s*(.*)$/i
+const PARECE_FONTE = /\b(Vol\.|No\.|pp?\.)\s*[\divxlc]/i
+
+export function analisarJstor(texto, corpo = '') {
   if (!/jstor\.org\/stable\/|This content downloaded|JSTOR is a not-for-profit/i.test(texto || '')) return null
-  const linhas = texto.split('\n').map((l) => l.trim())
-  const iAut = linhas.findIndex((l) => /^Author\(s\):/i.test(l))
-  const titulo = (iAut > 0 ? linhas.slice(0, iAut) : []).filter((l) => l && !/^Review:?$/i.test(l)).join(' ').trim()
-  const autores = iAut >= 0 ? linhas[iAut].replace(/^Author\(s\):\s*/i, '').split(/\s*(?:,|\band\b|&)\s*/).map((n) => pessoa(n.trim())).filter(Boolean) : []
-  const fonte = (linhas.find((l) => /^Source:/i.test(l)) || '').replace(/^Source:\s*/i, '')
+  const todas = texto.split('\n').map((l) => l.trim())
+  const fim = todas.findIndex((l) => /jstor\.org\/stable\/\d+/i.test(l))
+  const linhas = fim >= 0 ? todas.slice(0, fim + 1) : todas.slice(0, 30)
+  // Linhas antes do 1.º rótulo (cabeçalho da sociedade + título) e linhas de cada rótulo (com as continuações)
+  const antes = []
+  const campos = {}
+  let atual = null
+  for (const l of linhas) {
+    const m = ROTULO_JSTOR.exec(l) || (/^Review$/i.test(l) ? [l, 'Review', ''] : null)
+    if (m) {
+      atual = m[1].toLowerCase()
+      campos[atual] = campos[atual] || []
+      if (m[2]) campos[atual].push(m[2])
+    } else if (!atual) antes.push(l)
+    else if (l) {
+      // (sem «Source:», a referência da revista vem logo a seguir a «Review by:» — #17047)
+      if (!campos.source && ['review by', 'author(s)'].includes(atual) && PARECE_FONTE.test(l)) {
+        atual = 'source'
+        campos.source = [l]
+      } else campos[atual].push(l)
+    }
+  }
+  const junto = (k) => (campos[k] || []).join(' ').replace(/\s+/g, ' ').trim()
+  // Título = último bloco antes dos rótulos (o primeiro, separado por uma linha vazia, é o nome da sociedade)
+  const blocos = antes.join('\n').split(/\n\s*\n/).map((b) => b.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean)
+  let titulo = blocos.length ? blocos[blocos.length - 1] : ''
+  // Recensões: «Review: [untitled]» + «Reviewed work(s):» (uma obra por linha, «Título by Autor»), ou só «Review by:»
+  let obras = []
+  for (const l of campos['reviewed work(s)'] || []) {
+    if (obras.length && !/\sby\s/.test(obras[obras.length - 1])) obras[obras.length - 1] += ' ' + l
+    else obras.push(l)
+  }
+  const recensao = !!(campos.review || campos['reviewed work(s)'] || campos['review by'])
+  if (recensao) {
+    const proprio = junto('review').replace(/^\[untitled\]$/i, '')
+    if (!obras.length && campos['review by'] && titulo) obras = [titulo]
+    titulo = proprio || (obras.length ? `Review of: ${obras.join('; ')}` : titulo)
+  }
+  const nomes = junto('author(s)') || junto('review by')
+  const autores = nomes ? nomes.split(/\s*(?:,|;|\band\b|&)\s*/).map((n) => pessoa(n.trim())).filter(Boolean) : []
+  const fonte = junto('source')
+  const ref = lerReferenciaRevista(fonte)
   const estavel = (/jstor\.org\/stable\/(\d+)/i.exec(texto) || [])[1] || ''
-  return { titulo: tituloNormal(titulo), autores, ano: anoDe(fonte), fonte, doi: estavel ? `10.2307/${estavel}` : '' }
+  const editora = junto('published by').replace(/\s+on behalf of\b.*$/i, '').trim()
+  let tituloFinal = tituloNormal(titulo)
+  if (maiusculas(titulo.replace(/^Review of: /, ''))) tituloFinal = maiusculasDoCorpo(tituloFinal, corpo)
+  return {
+    titulo: tituloFinal,
+    autores,
+    ano: ref.ano || anoDe(fonte),
+    fonte,
+    revista: ref.revista,
+    volume: ref.volume,
+    numero: ref.numero,
+    paginas: ref.paginas,
+    editora,
+    recensao,
+    recensaoDe: obras,
+    estavel,
+    url: estavel ? `https://www.jstor.org/stable/${estavel}` : '',
+    doi: '',
+    doiPossivel: estavel ? `10.2307/${estavel}` : '',
+    // (folha bem lida: título, revista e ano; o autor é exigido mais à frente, como em todas as fichas)
+    completo: !!(tituloFinal && ref.revista && (ref.ano || anoDe(fonte))),
+  }
+}
+
+// «Il Saggiatore musicale , 2015, Vol. 22, No. 1 (2015), pp. 33-59», «Recercare, Vol. 3 (1991), pp. 5-79»,
+// «Revista de Musicología , Julio de 2009, Vol. 32, No. 2 (Julio de 2009), pp. 35-49»
+const MES_OU_ESTACAO = /^(spring|summer|autumn|fall|winter|primavera|ver[ãa]o|verano|oto[ñn]o|outono|invierno|inverno|printemps|[ée]t[ée]|automne|hiver|fr[üu]hling|sommer|herbst|jan|feb|febr|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|janeiro|fevereiro|mar[çc]o|maio|junho|julho|setembro|outubro|novembro|dezembro)\b\.?(\s*[-–/]\s*\p{L}+\.?)?$/iu
+export function lerReferenciaRevista(fonte) {
+  const partes = String(fonte || '').split(/\s*,\s*/)
+  // (a revista é a 1.ª parte e as seguintes sem algarismos: «19th-Century Music» tem algarismos e é só uma parte)
+  let i = 1
+  // (nem estações ou meses: «Journal of the American Musicological Society, Summer, 1997, Vol. 50»)
+  while (i < partes.length && !/\d/.test(partes[i]) && !/^(Vol|No|pp?)\./i.test(partes[i]) && !MES_OU_ESTACAO.test(partes[i])) i++
+  const revista = partes.slice(0, i).join(', ').replace(/\s+/g, ' ').trim()
+  const valor = (re) => ((re.exec(fonte) || [])[1] || '').trim()
+  const entreParenteses = /\(([^()]*\b(1[5-9]\d{2}|20\d{2}))\)/.exec(fonte || '')
+  return {
+    revista: /\d/.test(fonte || '') ? revista : '',
+    volume: valor(/\bVol\.\s*([\w./-]+)/i),
+    numero: valor(/\bNo\.\s*([\w./-]+)/i),
+    paginas: valor(/\bpp?\.\s*([\divxlc]+(?:\s*[-–]\s*[\divxlc]+)?)/i).replace(/\s*[-–]\s*/, '-'),
+    ano: entreParenteses ? entreParenteses[2] : '',
+  }
+}
+
+// Título que estava todo em maiúsculas (e passou a minúsculas): as palavras que no texto do artigo aparecem quase
+// sempre com maiúscula — nomes próprios, «Barsanti» — voltam a tê-la
+function maiusculasDoCorpo(titulo, corpo) {
+  if (!corpo) return titulo
+  const amostra = corpo.slice(0, 200000)
+  return titulo.replace(/(^|[\s(«"'‘“-])(\p{Ll}[\p{L}'’]{2,})/gu, (todo, antes, palavra) => {
+    const esc = palavra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const cima = (amostra.match(new RegExp(`(?<![\\p{L}])${esc.charAt(0).toUpperCase()}${esc.slice(1)}(?![\\p{L}])`, 'gu')) || []).length
+    const baixo = (amostra.match(new RegExp(`(?<![\\p{L}])${esc}(?![\\p{L}])`, 'gu')) || []).length
+    return cima >= 2 && cima > baixo * 3 ? antes + palavra.charAt(0).toUpperCase() + palavra.slice(1) : todo
+  }).replace(/(^|[\s(-])(c{0,3}(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3}))(?=$|[\s),.:;-])/g, (todo, antes, r) => (r.length >= 2 ? antes + r.toUpperCase() : todo))
 }
 
 // ---------------------------------------------------------------------------

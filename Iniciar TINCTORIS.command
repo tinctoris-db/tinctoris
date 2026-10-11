@@ -12,7 +12,7 @@ atualizar() {
   curl -s -m 2 "http://127.0.0.1:${PB_PORTA:-8090}/api/health" >/dev/null 2>&1 && return
   echo "A ver se há uma versão nova do programa…"
   if ! GIT_TERMINAL_PROMPT=0 git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=15 fetch -q origin main 2>/dev/null; then
-    echo "   (sem ligação ao GitHub: continua com a versão atual)"
+    echo "   (sem ligação ao GitHub: continua com a versão actual)"
     return
   fi
   local novos=$(git rev-list --count HEAD..origin/main 2>/dev/null)
@@ -22,21 +22,21 @@ atualizar() {
   git log --format='   • %s' HEAD..origin/main | head -20
   echo ""
   if [[ -n "$(git status --porcelain)" ]]; then
-    echo "  Mas há alterações neste Mac que ainda não estão no GitHub: não atualizo agora."
-    echo "  (Peça ao Claude para as guardar primeiro.) Continua com a versão atual."
+    echo "  Mas há alterações neste Mac que ainda não estão no GitHub: não actualizo agora."
+    echo "  (Peça ao Claude para as guardar primeiro.) Continua com a versão actual."
     echo ""
     return
   fi
   if ! git merge-base --is-ancestor HEAD origin/main; then
-    echo "  A versão deste Mac e a do GitHub seguiram caminhos diferentes: não atualizo agora."
-    echo "  (Peça ao Claude para as juntar.) Continua com a versão atual."
+    echo "  A versão deste Mac e a do GitHub seguiram caminhos diferentes: não actualizo agora."
+    echo "  (Peça ao Claude para as juntar.) Continua com a versão actual."
     echo ""
     return
   fi
   local resposta
-  read "resposta?  Atualizar agora? (s = sim, n = não) "
+  read "resposta?  Actualizar agora? (s = sim, n = não) "
   if [[ "$resposta" != [sSyY]* ]]; then
-    echo "  Continua com a versão atual."
+    echo "  Continua com a versão actual."
     echo ""
     return
   fi
@@ -51,7 +51,7 @@ atualizar() {
            (cd "$tmp" && zip -q -1 "$destino" *.db) }; then
       rm -rf "$tmp"
       rm -f "$destino"
-      echo "  Não consegui fazer a cópia de segurança: não atualizo. Continua com a versão atual."
+      echo "  Não consegui fazer a cópia de segurança: não actualizo. Continua com a versão actual."
       echo ""
       return
     fi
@@ -62,7 +62,7 @@ atualizar() {
   fi
   local antes=$(git rev-parse HEAD)
   if ! git merge -q --ff-only origin/main; then
-    echo "  A atualização falhou: continua com a versão atual."
+    echo "  A actualização falhou: continua com a versão actual."
     echo ""
     return
   fi
@@ -70,7 +70,7 @@ atualizar() {
     echo "  A instalar as peças novas do serviço…"
     (cd "$app/worker" && npm install --no-audit --no-fund --silent) || echo "  Aviso: a instalação das peças novas falhou (ver acima)."
   fi
-  echo "  Programa atualizado. A arrancar…"
+  echo "  Programa actualizado. A arrancar…"
   echo ""
 }
 

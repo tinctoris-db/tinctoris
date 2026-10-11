@@ -1,0 +1,147 @@
+{
+  "_nota": "Novidades de cada versão, mostradas em «Acerca» (a mais recente primeiro). Cada texto em português (pt) e inglês (en). O NOVIDADES.md, na raiz, tem a mesma lista para ler no GitHub.",
+  "versoes": [
+    {
+      "versao": "0.10.0-beta",
+      "data": {
+        "pt": "12 de Outubro de 2026",
+        "en": "12 October 2026"
+      },
+      "grupos": [
+        {
+          "titulo": {
+            "pt": "Interface",
+            "en": "Interface"
+          },
+          "itens": [
+            {
+              "pt": "Interface em inglês: escolhe-se em Definições, nas boas-vindas ou no ecrã de entrada; na primeira vez segue o idioma do Mac.",
+              "en": "English interface: choose it in Settings, on the welcome screen or on the sign-in screen; the first time, it follows the Mac’s language."
+            },
+            {
+              "pt": "Ortografia portuguesa anterior ao Acordo de 1990 em todo o programa (interface, mensagens e manuais).",
+              "en": "Portuguese spelling prior to the 1990 Orthographic Agreement throughout (interface, messages and manuals)."
+            },
+            {
+              "pt": "Menu reorganizado: «Acerca» e «Ajuda» separados, número da versão na barra lateral.",
+              "en": "Reorganised menu: separate “About” and “Help”, version number in the sidebar."
+            }
+          ]
+        },
+        {
+          "titulo": {
+            "pt": "Acrescentar fontes",
+            "en": "Adding sources"
+          },
+          "itens": [
+            {
+              "pt": "Livros em papel pela fotografia do ISBN (código de barras ou ficha técnica): a ficha faz-se sozinha a partir dos catálogos, com um campo livre «Onde está o exemplar físico».",
+              "en": "Printed books from a photo of the ISBN (barcode or copyright page): the record is created from library catalogues, with a free field “Where is the physical copy”."
+            },
+            {
+              "pt": "Discos (CD, LP) pela fotografia do código de barras ou da capa, com confirmação da edição (ano ℗/©, número de catálogo, editora).",
+              "en": "Albums (CD, LP) from a photo of the barcode or the cover, with the edition confirmed (℗/© year, catalogue number, label)."
+            },
+            {
+              "pt": "Folhas de rosto do JSTOR lidas por inteiro: artigos e recensões identificados, com a «Obra recenseada».",
+              "en": "JSTOR cover pages read in full: articles and reviews identified, with the “Reviewed work”."
+            }
+          ]
+        },
+        {
+          "titulo": {
+            "pt": "Organizar e corrigir",
+            "en": "Organising and correcting"
+          },
+          "itens": [
+            {
+              "pt": "Editar várias fichas de uma vez: só os campos comuns, «só onde está vazio» ou «substituir em todas», etiquetas e contextos.",
+              "en": "Edit several records at once: only the fields they share, “only where empty” or “replace in all”, tags and contexts."
+            },
+            {
+              "pt": "Apagar várias fontes de uma vez, com os ficheiros no Lixo do Mac e cópia de segurança antes.",
+              "en": "Delete several sources at once, with the files moved to the Mac’s Bin and a backup made first."
+            },
+            {
+              "pt": "Filtro «Formato do ficheiro» (PDF, Word, MIDI, Finale, sem ficheiro…).",
+              "en": "“File format” filter (PDF, Word, MIDI, Finale, no file…)."
+            },
+            {
+              "pt": "Duplicados: comparação lado a lado com a ficha confundida; só se põe de parte o que tem as páginas iguais.",
+              "en": "Duplicates: side-by-side comparison with the record it was mistaken for; only files with identical pages are set aside."
+            }
+          ]
+        },
+        {
+          "titulo": {
+            "pt": "Ler e partilhar",
+            "en": "Reading and sharing"
+          },
+          "itens": [
+            {
+              "pt": "Cópia de leitura num disco externo: fichas, notas de leitura, ficheiros e texto integral, que abrem com duplo clique em qualquer Mac ou Windows, sem instalar nada. Pode ser emprestada: as notas privadas ficam de fora.",
+              "en": "Read-only copy on an external drive: records, reading notes, files and full text, opening with a double click on any Mac or Windows computer, with nothing to install. It can be lent: private notes are left out."
+            }
+          ]
+        },
+        {
+          "titulo": {
+            "pt": "Texto integral (OCR)",
+            "en": "Full text (OCR)"
+          },
+          "itens": [
+            {
+              "pt": "OCR também nas fichas por rever, quando não há mais nada em fila.",
+              "en": "OCR also for records to review, when nothing else is queued."
+            },
+            {
+              "pt": "Melhor leitura de PDFs digitalizados com páginas pequenas (resolução ajustada).",
+              "en": "Better reading of scanned PDFs with small pages (adjusted resolution)."
+            }
+          ]
+        },
+        {
+          "titulo": {
+            "pt": "Documentação",
+            "en": "Documentation"
+          },
+          "itens": [
+            {
+              "pt": "Manual e guia de instalação em inglês; guia para colaboradores; créditos e forma de citar actualizados.",
+              "en": "Manual and installation guide in English; contributors’ guide; updated credits and citation."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "versao": "0.9.0-beta",
+      "data": {
+        "pt": "3 de Outubro de 2026",
+        "en": "3 October 2026"
+      },
+      "intro": {
+        "pt": "Primeira versão publicada.",
+        "en": "First published version."
+      },
+      "grupos": [
+        {
+          "titulo": {
+            "pt": "Beta",
+            "en": "Beta"
+          },
+          "itens": [
+            {
+              "pt": "Nome TINCTORIS e identidade a preto e branco, licença aberta (AGPL) e forma de citar.",
+              "en": "The TINCTORIS name and black-and-white identity, open licence (AGPL) and how to cite."
+            },
+            {
+              "pt": "Boas-vindas, botão «Enviar comentário», opção «Abrir só neste Mac» e instalação para os testers.",
+              "en": "Welcome screen, “Send feedback” button, “Open only on this Mac” option and installation for testers."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

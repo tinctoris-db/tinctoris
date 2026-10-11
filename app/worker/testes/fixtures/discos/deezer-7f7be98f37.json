@@ -1,0 +1,8 @@
+{
+ "url": "https://api.deezer.com/search/album?q=a%20garden%20of%20black%20flowers%20Hilliard%20Ensemble&limit=10",
+ "status": 200,
+ "corpo": {
+  "data": [],
+  "total": 0
+ }
+}

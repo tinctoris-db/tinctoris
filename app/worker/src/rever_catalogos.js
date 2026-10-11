@@ -77,8 +77,8 @@ export async function decidir(f, texto, email) {
 
   // Conjunto de números ("BWV 772–786"): é uma coleção, não uma obra
   if (eIntervalo(md.catalogo)) {
-    if (!md.imslp) return { acao: 'mantido', motivo: 'coleção' }
-    return { acao: 'titulo-reposto', motivo: 'coleção', alteracoes: { ...semObra(f, md), metadados: md } }
+    if (!md.imslp) return { acao: 'mantido', motivo: 'colecção' }
+    return { acao: 'titulo-reposto', motivo: 'colecção', alteracoes: { ...semObra(f, md), metadados: md } }
   }
 
   // 4. Número só da IA: fica se a obra do IMSLP bater com o título impresso

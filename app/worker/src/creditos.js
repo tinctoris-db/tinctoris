@@ -1,5 +1,5 @@
 // Gera o CREDITOS.md (raiz do repositório) a partir de app/pb_public/creditos.json, a mesma fonte que a app mostra
-// em «Acerca e ajuda» → Créditos. Correr depois de acrescentar uma contribuição:  node app/worker/src/creditos.js
+// em «Acerca» → Créditos. Correr depois de acrescentar uma contribuição:  node app/worker/src/creditos.js
 import fs from 'node:fs'
 import path from 'node:path'
 import { PASTAS } from './config.js'
@@ -14,7 +14,7 @@ const md = `# Créditos do TINCTORIS
 
 <!-- Gerado por app/worker/src/creditos.js a partir de app/pb_public/creditos.json: não editar à mão. -->
 
-## Conceção e desenvolvimento
+## Concepção e desenvolvimento
 
 ${c.nota}
 
@@ -32,9 +32,9 @@ ${pessoas(c.testers)}
 
 Só aparecem os testers que deixaram o nome e marcaram «Aceito aparecer nos créditos» no formulário de comentários.
 
-## Projetos e catálogos
+## Projectos e catálogos
 
-O TINCTORIS existe graças ao trabalho aberto destes projetos:
+O TINCTORIS existe graças ao trabalho aberto destes projectos:
 
 ${(c.projetos || []).map((p) => `- **${p.nome}**${p.papel ? `, ${p.papel}` : ''}`).join('\n')}
 

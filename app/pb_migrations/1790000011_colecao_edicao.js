@@ -4,7 +4,7 @@
 // 1.ª edição, e as ligações entre um PDF e os lotes de transcrições MIDI que herdam dele.
 migrate((app) => {
   const novos = [
-    { chave: "conteudo_tipo", rotulo: "Coleção ou obra", tipo: "lista", opcoes: ["Coleção", "Obra", "Peça de uma coleção"] },
+    { chave: "conteudo_tipo", rotulo: "Colecção ou obra", tipo: "lista", opcoes: ["Colecção", "Obra", "Peça de uma colecção"] },
     { chave: "edicao_imslp", rotulo: "Edição do exemplar (IMSLP)", tipo: "texto" },
     { chave: "rism_primeira_edicao", rotulo: "RISM da 1.ª edição", tipo: "texto" },
     { chave: "transcricao_midi", rotulo: "Transcrições MIDI (fichas)", tipo: "texto" },

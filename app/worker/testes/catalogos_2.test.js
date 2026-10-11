@@ -31,7 +31,7 @@ test('BSB antiga: cota legível sem URN (inventado)', () => {
 })
 
 test('Bach digital: rótulos em português', () => {
-  assert.equal(tipoPt('0005', 'collective manuscript'), 'manuscrito coletivo')
+  assert.equal(tipoPt('0005', 'collective manuscript'), 'manuscrito colectivo')
   assert.equal(datacaoPt('0001.0004', 'second half of the 18th century (ca. 1760–1789)'), '2.ª metade do séc. XVIII (c. 1760–1789)')
   assert.equal(datacaoPt('0002', 'about 1800'), 'c. 1800')
   assert.equal(datacaoPt('0000', 'unknown / not clear'), '')

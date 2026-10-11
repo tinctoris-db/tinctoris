@@ -8,11 +8,12 @@ import * as F from './ficheiros.js'
 import * as X from './extracao.js'
 import { ocrPdf, ocrImagem } from './ocr.js'
 import * as E from './fontes_externas/index.js'
+import { crossrefPorDoi } from './fontes_externas/bibliograficas.js'
 import { pessoa, titulosIguais, anosCompativeis, semelhanca, contido, tituloCompacto } from './fontes_externas/util.js'
 import { siglaRism, siglasEquivalentes, pesquisarMusical, CATALOGOS_FONTES } from './fontes_externas/musicologicas.js'
 import { completarExemplar, reconhecerExemplar, IDENTIFICADORES } from './fontes_externas/bibliotecas_digitais.js'
 import { fontesConhecidas } from './fontes_externas/compositores.js'
-import { pistasDoNome, formaProvavel, manuscritoPelaCota, exemplarDigitalizado, informacaoDoNome, melhorNome, restoDoNome, maiusculasDoNome } from './musica_antiga.js'
+import { versaoDoAutor, pistasDoNome, formaProvavel, manuscritoPelaCota, exemplarDigitalizado, informacaoDoNome, melhorNome, restoDoNome, maiusculasDoNome } from './musica_antiga.js'
 import { chaveCota } from './fontes_externas/musicologicas.js'
 import { catalogoDe, obraPorCatalogo, aplicarObra, compositorDe, obraCompativel, obraPlausivel, catalogoConfirmado, catalogoPeloNome, numeroNoNome, eIntervalo, donoDoCatalogo } from './fontes_externas/obras.js'
 import { lerLayout, lerLayoutOcr, analisarCapa, analisarJstor, palavrasChaveDoTexto, doNomeFicheiro, eTextoMusical, limparMusica, tokenMusical, cifrado } from './capa.js'
@@ -23,6 +24,8 @@ import { gerarPalavrasChave, palavrasUteis } from './palavras.js'
 import { log } from './registo.js'
 import { CHAVE_ESTADO_ANTES, marcarReanalise, estadoAntesDaReanalise, continuaCompleta, compositoresConhecidos, ajustarCandidatos, trocaAceitavel, contradicaoForma, registoManuscrito, edicaoModernaPara, dataMaisPrecisa, TIPOS_ACADEMICOS, autoresAcademicos } from './regras_identificacao.js'
 import { esperarVez, folgaEntreReanalises, emPoupanca, emPausa } from './intensidade.js'
+import { compararFicheiros, acrescentarDuvidoso } from './duplicados.js'
+import { registarOrigem } from './espaco_duplicados.js'
 
 // Fila sequencial: um ficheiro de cada vez. Se entrarem muitos de uma vez
 // (ex.: uma pasta enorme largada por engano), fica em pausa até confirmar.
@@ -80,7 +83,7 @@ function criarFila(nome, trabalho) {
       if (confirmado) confirmada = true
       if (!confirmada && !pausada && itens.length > LIMITE_LOTE) {
         pausada = true
-        log.aviso(`Entraram mais de ${LIMITE_LOTE} ficheiros de uma vez: o processamento está em pausa até confirmar na página Atividade.`)
+        log.aviso(`Entraram mais de ${LIMITE_LOTE} ficheiros de uma vez: o processamento está em pausa até confirmar na página Actividade.`)
       }
       correr()
     },
@@ -110,15 +113,28 @@ const IMAGEM_MINIMA = 60 * 1024 // imagens mais pequenas são ícones/ilustraç�
 const relativo = (abs) => path.relative(PASTAS.biblioteca, abs).split(path.sep).join('/')
 const semVazios = (o) => Object.fromEntries(Object.entries(o || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined))
 
+// Registo do DOI impresso no próprio documento: vale mesmo com um título genérico («Editorial», «Preface») que a escolha
+// automática recusa, se o título ou a revista do registo estiverem no texto (não é o DOI de uma referência — #14274)
+function registoDoDoi(candidatos, doi, texto) {
+  if (!doi) return null
+  const c = candidatos.find((x) => x.confianca >= 1 && String(x.doi || '').toLowerCase() === doi.toLowerCase())
+  if (!c) return null
+  const norm = (t) => F.semAcentos(String(t || '')).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const t = ` ${norm(texto)} `
+  return [c.titulo, c.metadados?.revista].some((x) => norm(x) && t.includes(` ${norm(x)} `)) ? c : null
+}
+
 // Reanálise: o que a ficha já tinha não se perde. Nenhum campo com valor fica vazio; e se a ficha veio de um
 // catálogo (RISM, IMSLP, Mendeley, CrossRef…) ou foi corrigida à mão, o título, os autores, a data e o resto não
 // são trocados por uma leitura da IA ou do nome do ficheiro, que só preenchem o que falta.
 // (só um catálogo encontrado na própria reanálise pode substituir os valores de outro)
-const ORIGEM_FRACA = /^(IA local|ficheiro|capa do PDF)?$/
+// (uma folha do JSTOR relida dá o mesmo ou melhor: não protege a ficha contra a reanálise)
+const ORIGEM_FRACA = /^(IA local|ficheiro|capa do PDF|capa do JSTOR)?$/
 // Catálogos de livros e artigos modernos: não identificam fotografias de páginas nem manuscritos
 const CATALOGOS_MODERNOS = /^(CrossRef|Open Library|OpenAlex|OpenAIRE|DataCite)\b/
 // Metadados que não vêm de nenhum catálogo (ligações da própria biblioteca): passam sempre
-const PROPRIOS = ['originais', 'originais_conjunto', 'transcricao_midi', 'transcricao', 'herdado_de', 'nomes_alternativos', 'duplicados_retirados', 'nota_revisao']
+// (exemplar_papel: «Onde está o exemplar em papel», escrito só pelo utilizador)
+const PROPRIOS = ['originais', 'originais_conjunto', 'transcricao_midi', 'transcricao', 'herdado_de', 'nomes_alternativos', 'duplicados_retirados', 'nota_revisao', 'exemplar_papel']
 const vazio = (v) => v === null || v === undefined || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)
 const CAMPOS_PROTEGIDOS = ['titulo', 'autores', 'data', 'editora', 'local', 'doi', 'isbn', 'url', 'tipo', 'natureza', 'palavras_chave']
 // (semRepor: campos que as regras esvaziaram de propósito — ex.: o ano das fotografias — e que não voltam)
@@ -245,6 +261,7 @@ async function lerFicheiro(caminho, categoria, defs, nomeReal) {
   let jstor = null
   let capa = null
   let layoutTexto = ''
+  let textoBruto = ''
 
   if (categoria === 'pdf') {
     const pi = await X.pdfInfo(caminho)
@@ -259,7 +276,10 @@ async function lerFicheiro(caminho, categoria, defs, nomeReal) {
     let layout = []
     if (X.temTextoUtil(inicio, pi.paginas)) {
       info.inicio = inicio
-      info.texto = semAvisos(await X.pdfTexto(caminho))
+      // (o texto inteiro serve à folha do JSTOR para repor as maiúsculas dos nomes próprios; o rodapé «This content
+      //  downloaded…» de cada página faz o filtro de avisos tirá-las todas)
+      textoBruto = await X.pdfTexto(caminho)
+      info.texto = semAvisos(textoBruto)
       layout = await lerLayout(caminho, 3)
       layoutTexto = semAvisos(await X.pdfTexto(caminho, 1, 14, true))
     } else {
@@ -280,7 +300,7 @@ async function lerFicheiro(caminho, categoria, defs, nomeReal) {
       layoutTexto = limparMusica(layoutTexto)
       layout = semMusica(layout)
     }
-    jstor = analisarJstor(info.inicio)
+    jstor = analisarJstor(info.inicio, textoBruto)
     if (!jstor) capa = analisarCapa(layout)
     // Capa com texto cifrado (fontes com codificação própria): ler a imagem por OCR
     const pag1 = layout[0]?.blocos || []
@@ -332,8 +352,14 @@ async function lerFicheiro(caminho, categoria, defs, nomeReal) {
     else if (meta.autor) info.autores = [pessoa(meta.autor)].filter(Boolean)
     // (nomes dados pela própria biblioteca podem guardar palpites antigos errados: não servem para autor nem ano)
     info.ano = jstor?.ano || capa?.ano || (!nome.propria && nome.ano) || ''
-    info.doi = jstor?.doi || ''
-    info.jstor = !!jstor
+    info.doi = ''
+    // (a folha do JSTOR inteira: revista, volume, número, páginas, editora, ligação e, nas recensões, a obra recenseada)
+    info.jstor = jstor
+    if (jstor) {
+      info.editora = jstor.editora
+      info.url = jstor.url
+      info.metadados = semVazios({ revista: jstor.revista, volume: jstor.volume, numero: jstor.numero, paginas: jstor.paginas, recensao_de: jstor.recensaoDe.join('; ') })
+    }
     info.confiancaCapa = capaBoa && capaBoa.autores.length && capaBoa.ano ? capaBoa.confianca : 0
     if (capa?.tese) {
       info.tese = true
@@ -371,6 +397,9 @@ async function obraExistente(dados, excluirId) {
   const procurar = async (query) => (await pb.send('/api/bib/pesquisa', { query: { ...query, limite: 15 } })).forEach((r) => ids.add(r.id))
   try {
     if (dados.doi) (await pb.collection('fontes').getFullList({ filter: pb.filter("doi = {:d} && ficheiro = ''", { d: dados.doi }), fields: 'id' })).forEach((r) => ids.add(r.id))
+    // (o mesmo ISBN de uma ficha sem ficheiro — ex.: um livro em papel feito pela fotografia do ISBN; o título confirma em baixo)
+    const formas = [...new Set([X.isbn13(dados.isbn), X.isbn10(dados.isbn)].filter(Boolean))]
+    if (formas.length) (await pb.collection('fontes').getFullList({ filter: pb.filter(`(${formas.map((_, k) => `isbn = {:i${k}}`).join(' || ')}) && ficheiro = ''`, Object.fromEntries(formas.map((f, k) => [`i${k}`, f]))), fields: 'id' })).forEach((r) => ids.add(r.id))
     if (principais.length) await procurar({ titulo: principais.slice(0, 5).join(' ') })
     if (apelidoAutor && principais.length) await procurar({ autor: apelidoAutor, titulo: principais.slice(0, 2).join(' ') })
   } catch (_) {}
@@ -460,6 +489,7 @@ async function originaisParaDuplicados(orig) {
   } catch (_) {}
   const destino = await F.mover(abs, path.join(PASTAS.biblioteca, DUPLICADOS), `${path.basename(abs)} - originais`)
   log.aviso(`Originais repetidos: ${orig.originais} → ${relativo(destino)}`)
+  registarOrigem(destino, { motivo: 'originais_repetidos' })
 }
 
 async function processarFicheiro(caminho) {
@@ -493,6 +523,7 @@ async function processarFicheiro(caminho) {
       if ((dono.ficheiros_extra || []).some((x) => x.ficheiro === relativo(caminho))) return
       const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
       log.aviso(`Duplicado de um ficheiro de «${dono.titulo}»: movido para ${relativo(destino)}`)
+      registarOrigem(destino, { motivo: 'copia_exata_extra', numero: dono.numero, titulo: dono.titulo })
       await originaisParaDuplicados(orig)
       await F.limparPastasVazias(path.dirname(caminho), raiz)
       return
@@ -502,6 +533,7 @@ async function processarFicheiro(caminho) {
     if (existente.ficheiro === relativo(caminho)) return // é o próprio ficheiro (releitura da biblioteca)
     const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
     log.aviso(`Duplicado de «${existente.titulo}»: movido para ${relativo(destino)}`)
+    registarOrigem(destino, { motivo: 'copia_exata', numero: existente.numero, titulo: existente.titulo })
     await originaisParaDuplicados(orig)
     await F.limparPastasVazias(path.dirname(caminho), raiz)
     try {
@@ -520,6 +552,7 @@ async function processarFicheiro(caminho) {
     if (igual) {
       const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
       log.aviso(`As mesmas fotografias de «${igual.titulo}» (#${String(igual.numero || '').padStart(4, '0')}): movidas para ${relativo(destino)}`)
+      registarOrigem(destino, { motivo: 'mesmas_fotografias', numero: igual.numero, titulo: igual.titulo })
       await originaisParaDuplicados(orig)
       await F.limparPastasVazias(path.dirname(caminho), raiz)
       return
@@ -659,12 +692,12 @@ async function processarFicheiro(caminho) {
       catalogo: catConfirmado ? ia.catalogo : '',
       catalogo_ia: ia.catalogo && !catConfirmado ? ia.catalogo : '',
       instrumentacao: ia.instrumentacao,
-      conteudo_tipo: ia.conteudo === 'colecao' || semFrontispicio ? 'Coleção' : ia.conteudo === 'peca' ? 'Peça de uma coleção' : ia.conteudo === 'obra' ? 'Obra' : '',
-      nota_revisao: semFrontispicio ? `O PDF tem ${info.paginas} páginas e começa pela peça «${ia.titulo}»: provavelmente uma coleção sem frontispício (o título é o da 1.ª peça).` : '',
+      conteudo_tipo: ia.conteudo === 'colecao' || semFrontispicio ? 'Colecção' : ia.conteudo === 'peca' ? 'Peça de uma colecção' : ia.conteudo === 'obra' ? 'Obra' : '',
+      nota_revisao: semFrontispicio ? `O PDF tem ${info.paginas} páginas e começa pela peça «${ia.titulo}»: provavelmente uma colecção sem frontispício (o título é o da 1.ª peça).` : '',
     })
     previa = await obraExistente({ titulo: ia.titulo, autores: autoresFicheiro, data: info.ano, doi }, fonte.id)
   }
-  const nomeTipo = ia && ia.tipo !== 'Outro' ? ia.tipo : info.tese ? 'Tese / dissertação' : info.partitura ? 'Partitura' : TIPO_INICIAL[genero] || 'Outro'
+  const nomeTipo = info.jstor?.completo ? 'Artigo' : ia && ia.tipo !== 'Outro' ? ia.tipo : info.tese ? 'Tese / dissertação' : info.partitura ? 'Partitura' : TIPO_INICIAL[genero] || 'Outro'
   const tipoInicial = await tipoPorNome(nomeTipo)
   const generoPesquisa = info.tese ? 'tese' : info.partitura ? 'partitura' : genero
   const apelido = autoresFicheiro[0] ? autoresFicheiro[0].apelido || autoresFicheiro[0].literal : ''
@@ -702,7 +735,8 @@ async function processarFicheiro(caminho) {
   }
   if (sigla) siglaDesconhecida = null
   // (numa reanálise, a ficha que já era de um manuscrito continua a sê-lo: a IA só vê uma página)
-  const formaAntes = existente?.metadados?.forma === 'Manuscrito' || (existente?.tipo && existente.tipo === (await tipoPorNome('Manuscrito'))?.id) ? 'manuscrito' : ''
+  // (salvo se o «manuscrito» antigo veio só do nome «accepted manuscript» — versão do autor de um artigo, #17098)
+  const formaAntes = versaoDoAutor(nomeReal) ? '' : existente?.metadados?.forma === 'Manuscrito' || (existente?.tipo && existente.tipo === (await tipoPorNome('Manuscrito'))?.id) ? 'manuscrito' : ''
   const formaLida = formaProvavel({ ia, nome: nomeMus, temCota: !!(sigla && cota) || !!siglaDesconhecida, antes: formaAntes })
   // Fonte de arquivo (sigla do RISM + cota no nome do ficheiro) que a IA leu como «impresso» sem impressor, local, data
   // de impressão nem fórmula de imprenta: é um manuscrito (Pedro, 2/10: «P-BRd_949_antifonario», #15445 «P-BRd_964»)
@@ -768,14 +802,25 @@ async function processarFicheiro(caminho) {
 
   // Nome com arquivo e cota ("P-Cug_MM243", "bguc_mm243"): a fonte é essa; só o RISM/DIAMM a podem identificar melhor
   const nomeComCota = !!(sigla && cota) || !!siglaDesconhecida
-  if (!previa && !escolhido && !nomeComCota && defs.enriquecimento_auto !== false) {
+  // Folha do JSTOR bem lida: a ficha é essa; pesquisar pelo título só trazia outros artigos do mesmo autor (#0470) ou o
+  // livro recenseado em vez da recensão (#13984). Só se confirma no CrossRef se «10.2307/<número estável>» é mesmo um DOI.
+  let doiJstor = ''
+  if (!previa && info.jstor?.completo && info.jstor.doiPossivel && defs.enriquecimento_auto !== false) {
+    try {
+      const c = await crossrefPorDoi(info.jstor.doiPossivel, defs.email_contacto)
+      if (c && semelhanca(c.titulo, info.jstor.titulo) >= 0.6) doiJstor = info.jstor.doiPossivel
+    } catch (_) {}
+    // (o DOI que a versão antiga inventou a partir do número estável não volta na reanálise)
+    if (!doiJstor && !doi && String(existente?.doi || '').toLowerCase() === info.jstor.doiPossivel.toLowerCase()) semRepor.push('doi')
+  }
+  if (!previa && !escolhido && !nomeComCota && !info.jstor?.completo && defs.enriquecimento_auto !== false) {
     for (const titulo of info.titulos.slice(0, 2)) {
       try {
         const r = await E.automatico({ genero: generoPesquisa, titulo, autor: apelido || info.compositor || pistaCompositor, artista: info.artista, doi, isbn, paginas: info.paginas }, defs)
         if (r.erros.length) log.aviso(`Algumas fontes de metadados falharam: ${r.erros.join('; ')}`)
         r.candidatos = ajustar(r.candidatos)
         candidatos = E.juntarCandidatos(candidatos, r.candidatos)
-        escolhido = E.escolher(r.candidatos, limiar)
+        escolhido = E.escolher(r.candidatos, limiar) || registoDoDoi(r.candidatos, doi, `${info.inicio}\n${String(info.texto).slice(0, 30000)}`)
         if (escolhido || doi || isbn) break
       } catch (e) {
         log.aviso(`Pesquisa de metadados falhou: ${e.message}`)
@@ -827,6 +872,8 @@ async function processarFicheiro(caminho) {
 
   // Capa bem lida (título + autor + ano, numa tese ou capa do JSTOR) conta como identificação segura
   const capaSegura = !escolhido && info.confiancaCapa >= 0.8 && (info.tese || info.jstor)
+  // (a folha do JSTOR diz tudo: título, autores, revista, volume, número, páginas, ano e editora)
+  const jstorSeguro = !escolhido && !!info.jstor?.completo
   // Leitura da IA confirmada pelo próprio texto do documento (o título lido existe mesmo na página)
   // (nas partituras o título raramente está na camada de texto, cheia de símbolos musicais: basta a leitura da IA)
   const iaVerificada =
@@ -839,14 +886,15 @@ async function processarFicheiro(caminho) {
     autores: autoresFicheiro,
     data: info.ano,
     editora: info.editora,
-    doi,
+    doi: doi || doiJstor,
     isbn,
+    ...(info.url ? { url: info.url } : {}),
     tipo: tipoInicial?.id,
     metadados: info.metadados,
     paginas: info.paginas,
-    estado: escolhido || capaSegura || iaVerificada ? 'completo' : 'a_rever',
-    candidatos: escolhido ? [] : candidatos,
-    origem: capaSegura ? 'capa do PDF' : ia?.titulo ? 'IA local' : 'ficheiro',
+    estado: escolhido || capaSegura || jstorSeguro || iaVerificada ? 'completo' : 'a_rever',
+    candidatos: escolhido || jstorSeguro ? [] : candidatos,
+    origem: jstorSeguro ? 'capa do JSTOR' : capaSegura ? 'capa do PDF' : ia?.titulo ? 'IA local' : 'ficheiro',
     // (o OCR lê texto, não notas: nas partituras não serve para nada e ocupa o Mac durante horas)
     ocr_estado: info.precisaOcr && nomeTipo !== 'Partitura' ? 'pendente' : 'nao_aplicavel',
   }
@@ -1140,15 +1188,33 @@ async function processarFicheiro(caminho) {
     dados.metadados = { ...dados.metadados, palavras_chave_origem: pc.origem }
   }
 
-  // A mesma obra já tem outro ficheiro (outra cópia/digitalização)? Pôr esta cópia de parte.
+  // A mesma obra já tem outro ficheiro (outra cópia/digitalização)? Só se põe esta cópia de parte se as páginas forem
+  // iguais: a identificação sozinha engana (4/10: 43 peças diferentes de Hildebrand 1609 dadas como «cópias» da ficha
+  // da coleção; 48 ficheiros com o mesmo DOI errado de um artigo do Grove). Parecidas → ecrã Duplicados; diferentes ou
+  // impossíveis de comparar → ficha própria, por rever, com nota.
   // (uma transcrição identificada pelo livro não é outra cópia dele, nem a ficha do impresso vinda do Mendeley)
   const gemea = !existente && !livro?.titulo && !orig && (await mesmaObraComFicheiro(dados, fonte.id))
   if (gemea) {
-    await pb.collection('fontes').delete(fonte.id)
-    const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
-    log.aviso(`Outra cópia de «${gemea.titulo}» (#${String(gemea.numero || '').padStart(4, '0')}): movida para ${relativo(destino)}`)
-    await F.limparPastasVazias(path.dirname(caminho), raiz)
-    return
+    const numeroGemea = `#${String(gemea.numero || '').padStart(4, '0')}`
+    const absGemea = path.join(PASTAS.biblioteca, gemea.ficheiro)
+    const chave = (abs, h) => (h && fs.existsSync(abs) ? `${h}:${fs.statSync(abs).size}` : undefined)
+    const cmp = await compararFicheiros({ abs: caminho, chave: chave(caminho, hash) }, { abs: absGemea, chave: chave(absGemea, gemea.hash) }).catch(() => ({ resultado: 'sem_comparacao' }))
+    if (cmp.resultado === 'igual') {
+      await pb.collection('fontes').delete(fonte.id)
+      const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
+      log.aviso(`Outra cópia de «${gemea.titulo}» (${numeroGemea}): movida para ${relativo(destino)} (páginas iguais)`)
+      registarOrigem(destino, { motivo: 'mesma_obra', numero: gemea.numero, titulo: gemea.titulo, paginas_iguais: true })
+      await F.limparPastasVazias(path.dirname(caminho), raiz)
+      return
+    }
+    const comoCompara = { parecido: 'as páginas são muito parecidas', diferente: 'as páginas são diferentes', sem_comparacao: 'não foi possível comparar as páginas' }[cmp.resultado]
+    const nota = `Identificada como a mesma obra de ${numeroGemea} «${gemea.titulo}», mas ${comoCompara} (${cmp.paginas?.[0] || '?'} e ${cmp.paginas?.[1] || '?'} p.): confirmar se é outra cópia, outra edição ou parte, ou se a identificação está errada.`
+    dados.metadados = { ...dados.metadados, nota_revisao: [dados.metadados?.nota_revisao, nota].filter(Boolean).join(' ') }
+    if (dados.estado === 'completo') (dados.estado = 'a_rever'), (dados.candidatos = candidatos)
+    if (cmp.resultado === 'parecido') {
+      await acrescentarDuvidoso({ a: fonte.id, b: gemea.id, paginas: cmp.paginas, baixa: cmp.baixa, alta: cmp.alta }).catch((e) => log.aviso(`Par para o ecrã Duplicados não guardado: ${e.message}`))
+    }
+    log.aviso(`Talvez outra cópia de «${gemea.titulo}» (${numeroGemea}), mas ${comoCompara}: fica com ficha própria, por rever`)
   }
 
   // Já existe esta obra sem ficheiro (ex.: importada do Mendeley)? Associar em vez de duplicar.
@@ -1185,6 +1251,12 @@ async function processarFicheiro(caminho) {
     fonte = await pb.collection('fontes').update(alvo.id, junta, { expand: 'tipo' })
     log.info(`Ficheiro associado à fonte já existente «${fonte.titulo}»`)
   } else {
+    // (reanálise do mesmo ficheiro: o OCR completo já feito — ou a correr — não se repete; a reanálise só lê as
+    //  primeiras páginas. Lê-se agora, porque o OCR pode ter acabado enquanto a ficha era reanalisada)
+    if (dados.ocr_estado === 'pendente' && existente) {
+      const ocrAgora = (await pb.collection('fontes').getOne(fonte.id, { fields: 'ocr_estado' }).catch(() => null))?.ocr_estado
+      if (ocrAgora === 'feito' || ocrAgora === 'em_curso') dados.ocr_estado = ocrAgora
+    }
     fonte = await pb.collection('fontes').update(fonte.id, dados, { expand: 'tipo' })
   }
 
@@ -1315,6 +1387,8 @@ export async function juntarFichas(destinoId, origemIds) {
     const mo = o.metadados || {}
     if (mo.originais) Object.assign(md, { originais: juntarOriginais(md.originais, mo.originais), originais_conjunto: juntarOriginais(md.originais_conjunto, mo.originais_conjunto) })
     for (const k of ['transcricao_midi', 'transcricao']) if (mo[k]) md[k] = md[k] ? [...new Set([...refs(md[k]), ...refs(mo[k])])].join(', ') : mo[k]
+    // (onde está o exemplar em papel: escrito pelo utilizador, nunca se perde)
+    if (String(mo.exemplar_papel || '').trim()) md.exemplar_papel = [...new Set([md.exemplar_papel, mo.exemplar_papel].map((x) => String(x || '').trim()).filter(Boolean))].join('; ')
   }
   // (primeiro gravar a ficha que fica; só depois apagar as outras: nunca há ficheiros sem ficha)
   await pb.collection('fontes').update(destinoId, { ...junta, ficheiros_extra: extra, tags: [...tags], metadados: md })
@@ -1437,6 +1511,25 @@ export async function retomarInterrompidas() {
 let ocrAtivo = false
 const INTERROMPIDO = 'interrompido pela intensidade'
 export let ocrAtual = null
+// Pedidos à mão («Refazer OCR» na ficha): passam à frente de tudo, também nas fichas por rever
+const ocrPedidos = new Set()
+
+async function proximaParaOcr() {
+  const primeira = (filtro) => pb.collection('fontes').getFirstListItem(filtro, { sort: 'created', expand: 'tipo' }).catch(() => null)
+  for (const id of ocrPedidos) {
+    ocrPedidos.delete(id)
+    const f = await pb.collection('fontes').getOne(id, { expand: 'tipo' }).catch(() => null)
+    if (f?.ocr_estado === 'pendente' && f.estado !== 'processando') return f
+  }
+  // Depois as fontes já identificadas
+  const f = await primeira("ocr_estado = 'pendente' && estado = 'completo'")
+  if (f) return f
+  // Por fim as "por rever", só quando não há mais nada em fila: aproveita o Mac parado (ex.: à noite)
+  // e o texto fica pesquisável (Pedro, 4/10)
+  const fila = filaEntrada.estado()
+  if (fila.pendentes || fila.ativo) return null
+  return primeira("ocr_estado = 'pendente' && estado = 'a_rever'")
+}
 
 export async function cicloOcr() {
   if (ocrAtivo) return
@@ -1448,13 +1541,8 @@ export async function cicloOcr() {
       if (defs.ocr_ativo === false) break
       // (em poupança ou pausa o OCR espera: é o trabalho mais pesado e o menos urgente)
       if (emPoupanca() || emPausa()) break
-      let f
-      try {
-        // Só fontes já identificadas (as "por rever" esperam: o OCR não é preciso para as identificar)
-        f = await pb.collection('fontes').getFirstListItem("ocr_estado = 'pendente' && estado = 'completo'", { sort: 'created', expand: 'tipo' })
-      } catch (_) {
-        break
-      }
+      const f = await proximaParaOcr()
+      if (!f) break
       if (f.expand?.tipo?.nome === 'Partitura') {
         await pb.collection('fontes').update(f.id, { ocr_estado: 'nao_aplicavel' })
         continue
@@ -1501,6 +1589,15 @@ export async function cicloOcr() {
           await pb.collection('fontes').update(f.id, { ocr_estado: 'pendente' })
           log.info(`OCR interrompido (intensidade): «${f.titulo}» volta para a fila`)
           break
+        }
+        // (a ficha foi reanalisada a meio e o ficheiro mudou de sítio: não é erro, volta para a fila)
+        // (ou deixou de existir: juntada a outra como duplicado)
+        const agora = await pb.collection('fontes').getOne(f.id, { fields: 'ficheiro,estado' }).catch(() => null)
+        if (!agora) continue
+        if (agora.ficheiro !== f.ficheiro || agora.estado === 'processando') {
+          await pb.collection('fontes').update(f.id, { ocr_estado: 'pendente' })
+          log.info(`OCR interrompido (a ficha foi reanalisada): «${f.titulo}» volta para a fila`)
+          continue
         }
         await pb.collection('fontes').update(f.id, { ocr_estado: 'erro' })
         log.erro(`OCR falhou em «${f.titulo}»: ${e.message}`)
@@ -1570,5 +1667,6 @@ export async function aplicar(id, candidato) {
 export async function pedirOcr(id) {
   await garantirSessao()
   await pb.collection('fontes').update(id, { ocr_estado: 'pendente' })
+  ocrPedidos.add(id)
   cicloOcr()
 }

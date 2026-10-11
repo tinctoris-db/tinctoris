@@ -1,0 +1,71 @@
+{
+ "url": "https://musicbrainz.org/ws/2/release/?query=barcode:5425004841285&fmt=json",
+ "status": 200,
+ "corpo": {
+  "created": "2026-10-10T18:51:14.841Z",
+  "count": 1,
+  "offset": 0,
+  "releases": [
+   {
+    "id": "596c0675-fbdf-4768-8e20-d3bd5d608e24",
+    "score": 100,
+    "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+    "artist-credit-id": "5c1b6951-cc98-4cc3-a1bc-f6f7a68d717f",
+    "count": 1,
+    "title": "Ni Dufay, Ni Binchois: The Works of Johannes Pullois",
+    "status": "Official",
+    "text-representation": {
+     "script": "Latn"
+    },
+    "artist-credit": [
+     {
+      "joinphrase": "; ",
+      "name": "Johannes Pullois",
+      "artist": {
+       "id": "06e6b153-1edb-436a-8602-0860c80d14a4",
+       "name": "Johannes Pullois",
+       "sort-name": "Pullois, Johannes",
+       "disambiguation": "Franco-Flemish composer of the Renaissance"
+      }
+     },
+     {
+      "name": "Sollazzo Ensemble",
+      "artist": {
+       "id": "33f09b31-dd19-4c99-a043-5a324407b7c1",
+       "name": "Sollazzo Ensemble",
+       "sort-name": "Sollazzo Ensemble",
+       "disambiguation": "Swiss early music ensemble"
+      }
+     }
+    ],
+    "release-group": {
+     "id": "50c22135-61f0-42cb-bb50-d645fe5b73a0",
+     "type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+     "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+     "title": "Ni Dufay, Ni Binchois: The Works of Johannes Pullois",
+     "primary-type": "Album"
+    },
+    "barcode": "5425004841285",
+    "asin": "B0DXQG3X7L",
+    "label-info": [
+     {
+      "catalog-number": "PAS 1128",
+      "label": {
+       "id": "87479d5c-8691-465b-86d4-a96a7f402320",
+       "name": "Passacaille"
+      }
+     }
+    ],
+    "track-count": 15,
+    "media": [
+     {
+      "id": "8af2d9bb-3e6d-3600-8b3f-2fcb7422ba20",
+      "format": "CD",
+      "disc-count": 0,
+      "track-count": 15
+     }
+    ]
+   }
+  ]
+ }
+}

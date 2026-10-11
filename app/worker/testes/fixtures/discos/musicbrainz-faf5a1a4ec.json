@@ -1,0 +1,10 @@
+{
+ "url": "https://musicbrainz.org/ws/2/release/?query=barcode:5603559012125&fmt=json",
+ "status": 200,
+ "corpo": {
+  "created": "2026-10-10T18:50:34.420Z",
+  "count": 0,
+  "offset": 0,
+  "releases": []
+ }
+}

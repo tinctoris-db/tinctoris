@@ -105,10 +105,10 @@ export function correcoesImslp(ficha, pagina, { conhecido = () => false } = {}) 
   // (o título da ficha é o da coleção, ou o seu início: "Sonate a 1, 2, 3" em "Sonate a 1 2. 3. per il violin…")
   const pareceColecao = [pagina.titulo, pagina.alternativo].filter(Boolean).some((t) => semelhanca(ficha.titulo, t) >= 0.5 || contido(ficha.titulo, t) >= 0.8 || (tituloCompacto(ficha.titulo).length >= 8 && tituloCompacto(t).startsWith(tituloCompacto(ficha.titulo))))
   const peca = pagina.colecao && !pareceColecao && PECA.test(String(ficha.titulo || ''))
-  if (!md.conteudo_tipo) md.conteudo_tipo = peca ? 'Peça de uma coleção' : pagina.colecao ? 'Coleção' : 'Obra'
+  if (!md.conteudo_tipo) md.conteudo_tipo = peca ? 'Peça de uma colecção' : pagina.colecao ? 'Colecção' : 'Obra'
   if (peca) {
     if (!md.colecao) md.colecao = pagina.titulo
-    notas.push(`página do IMSLP da coleção «${pagina.titulo}»: confirmar se o PDF é só esta peça`)
+    notas.push(`página do IMSLP da colecção «${pagina.titulo}»: confirmar se o PDF é só esta peça`)
   }
   if (pagina.colecao && !peca && pagina.pecas && !md.formato) md.formato = pagina.pecas
   // Impressor tomado por compositor ("Matthysz, Paulus")

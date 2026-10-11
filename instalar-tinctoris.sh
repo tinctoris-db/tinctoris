@@ -110,8 +110,8 @@ grep -q 'brew shellenv' "$HOME/.zprofile" 2>/dev/null || print 'eval "$(/opt/hom
 # ---- 5. Programa
 titulo "4/6  TINCTORIS"
 if [[ -d "$DESTINO/.git" ]]; then
-  diz "Já existe nesta pasta: vou atualizá-lo."
-  git -C "$DESTINO" pull -q --ff-only >>"$REGISTO" 2>&1 || falhar "não consegui atualizar o programa em $DESTINO."
+  diz "Já existe nesta pasta: vou actualizá-lo."
+  git -C "$DESTINO" pull -q --ff-only >>"$REGISTO" 2>&1 || falhar "não consegui actualizar o programa em $DESTINO."
 else
   [[ -e "$DESTINO" && -n "$(ls -A "$DESTINO" 2>/dev/null)" ]] && falhar "já existe uma pasta TINCTORIS com outros ficheiros em ${PASTA%/}. Escolha outro sítio ou mude-lhe o nome."
   git clone -q "$REPO" "$DESTINO" >>"$REGISTO" 2>&1 || falhar "não consegui descarregar o programa do GitHub."

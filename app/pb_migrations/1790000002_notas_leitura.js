@@ -9,7 +9,7 @@ migrate((app) => {
     name: "notas_leitura",
     fields: [
       { type: "relation", name: "fonte", collectionId: fontes.id, maxSelect: 1, cascadeDelete: true, required: true },
-      { type: "select", name: "tipo_nota", values: ["Citação", "Paráfrase", "Comentário", "Ideia", "Pergunta"], maxSelect: 1 },
+      { type: "select", name: "tipo_nota", values: ["Citação", "Paráfrase", "Comentário", "Idéia", "Pergunta"], maxSelect: 1 },
       { type: "text", name: "localizacao", max: 500 },
       { type: "text", name: "texto", max: 2000000 },
       { type: "json", name: "tags", maxSize: 100000 },

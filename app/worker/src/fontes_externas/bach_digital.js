@@ -41,7 +41,7 @@ export async function bachObra(codigo, email) {
   const c = String(codigo || '').trim()
   if (!/^BWV\s/i.test(c)) return null
   const lista = docs(await solr(`musicrepo_work01:"${c.replace(/"/g, '')}" AND objectType:work`, 'id,musicrepo_work01,musicrepo_work02', 5, email))
-  // (o número exato primeiro: "BWV 528" antes de "BWV 528.2")
+  // (o número exacto primeiro: "BWV 528" antes de "BWV 528.2")
   const obra = lista.find((d) => (d.musicrepo_work01 || []).some((x) => x.toLowerCase() === c.toLowerCase())) || lista[0]
   if (!obra) return null
   return { id: obra.id, numeros: obra.musicrepo_work01 || [], titulos: obra.musicrepo_work02 || [], url: `${BASE}/receive/${obra.id}` }
@@ -53,8 +53,8 @@ const TIPOS_PT = {
   '0001': 'manuscrito individual',
   '0002': 'manuscrito individual num volume compósito',
   '0003': 'volume compósito',
-  '0005': 'manuscrito coletivo',
-  '0006': 'manuscrito coletivo num volume compósito',
+  '0005': 'manuscrito colectivo',
+  '0006': 'manuscrito colectivo num volume compósito',
   '0008': 'particella (partitura reduzida)',
   '0009': 'impresso',
   '0004': 'edição original',
@@ -72,7 +72,7 @@ export function datacaoPt(id, rotulo = '') {
 }
 export const tipoPt = (id, rotulo = '') => TIPOS_PT[id] || (/^unknown/i.test(rotulo) ? '' : rotulo)
 
-// Fontes conhecidas de uma obra: "D-B Am.B 51 — manuscrito coletivo, cópia, 2.ª metade do séc. XVIII (c. 1760–1789)"
+// Fontes conhecidas de uma obra: "D-B Am.B 51 — manuscrito colectivo, cópia, 2.ª metade do séc. XVIII (c. 1760–1789)"
 export async function bachFontesDaObra(idObra, email, limite = 80) {
   const lista = docs(await solr(`link:${idObra} AND objectType:source`, 'id,musicrepo_source01,category', limite, email))
   const [tipos, autografo, datas] = await Promise.all([rotulos('BachDigitalSourceType1', email), rotulos('BachDigitalHasAutograph', email), rotulos('BachDigitalTimeOfOrigin', email)])
@@ -137,7 +137,7 @@ export async function bachFonte(id, email) {
       // ("49 leaves" → "49 folhas")
       formato: (textoDe(xml, 'source28', 'en')[0] || textoDe(xml, 'source28')[0] || '').replace(/\bleaves\b/i, 'folhas').replace(/\bleaf\b/i, 'folha').replace(/\bpages\b/i, 'páginas'),
       dimensoes: textoDe(xml, 'source15')[0] || '',
-      // (cadeia de possuidores, do mais antigo ao atual)
+      // (cadeia de possuidores, do mais antigo ao actual)
       proveniencia: textoDe(xml, 'source14').filter((p) => p !== '?').join(' → '),
       conteudo: obras,
       rism: /^\d+$/.test(rism) ? rism : '',

@@ -19,6 +19,9 @@ import { recentes, log } from './registo.js'
 import { pastasOriginais } from './juntar.js'
 import { categoriaPorExtensao } from './ficheiros.js'
 import { estadoIntensidade, mudarNivel } from './intensidade.js'
+import { apagarFontes } from './apagar_fontes.js'
+import { editarFontes } from './editar_fontes.js'
+import * as leitura from './exportar_leitura_servico.js'
 
 async function notasDe(ids) {
   const out = []
@@ -75,7 +78,7 @@ const ROTAS = {
   },
   'GET estilos': async () => listarEstilos(),
   // (os comandos de terminal confirmam que o serviço já tem o código de que precisam)
-  'GET capacidades': async () => ({ capacidades: ['lotes-midi', 'autor-pelo-nome', 'duplicados', 'colecoes-impressores', 'originais', 'intensidade', 'nome-primeiro', 'espaco-duplicados', 'rede', 'sistema'] }),
+  'GET capacidades': async () => ({ capacidades: ['lotes-midi', 'autor-pelo-nome', 'duplicados', 'colecoes-impressores', 'originais', 'intensidade', 'nome-primeiro', 'espaco-duplicados', 'comparar-duplicados', 'rede', 'sistema', 'apagar-fontes', 'exportar-leitura', 'referencias-isbn', 'editar-fontes', 'discos-foto'] }),
   // Versão do programa e do macOS (para os comentários dos testers)
   'GET sistema': async () => sistema(),
   // Acesso só neste Mac ou também noutros aparelhos da mesma rede (aplica-se ao reiniciar o TINCTORIS)
@@ -130,18 +133,28 @@ const ROTAS = {
   // Espaço ocupado por _duplicados (alerta acima de 10 %), verificação e Lixo do Mac
   'GET espaco-duplicados': async () => espaco.estado(),
   'POST espaco-verificar': async () => espaco.verificar(),
-  'GET espaco-por-ver': async () => espaco.porVer({ quantos: 500 }),
+  'GET espaco-por-ver': async () => espaco.porVer({ quantos: 2000 }),
+  // (as duas páginas lado a lado: a do ficheiro de _duplicados e a da ficha com que se confundiu)
+  'POST espaco-comparar': async (b) => espaco.compararPagina(b),
   'POST espaco-lixo': async (b) => espaco.porNoLixo({ ficheiros: Array.isArray(b.ficheiros) ? b.ficheiros : undefined }),
   'POST espaco-devolver': async (b) => espaco.devolver(b),
   'POST espaco-manter': async (b) => espaco.manter(b),
   'POST espaco-abrir': async (b) => espaco.abrir(b),
+  // Cópia de leitura num disco externo (Definições): o exportador corre num processo à parte; aqui só se lê o estado
+  'GET exportar-leitura': async () => leitura.estado(),
+  'POST exportar-leitura-simular': async (b) => leitura.simular(b),
+  'POST exportar-leitura-aplicar': async (b) => leitura.aplicar(b),
+  'POST exportar-leitura-parar': async () => leitura.parar(),
   'POST exportar': async (b) => {
     const ids = Array.isArray(b.ids) ? b.ids : []
-    if (!ids.length) throw new Error('Nenhuma fonte selecionada.')
+    if (!ids.length) throw new Error('Nenhuma fonte seleccionada.')
     const fontes = await fontesPorIds(ids)
     if (b.formato === 'notas-md') return exportarNotas(fontes, await notasDe(ids), b)
     return exportar(fontes, b)
   },
+  // Apagar as fontes seleccionadas na lista: fichas fora da base, ficheiros para o Lixo do Mac
+  'POST apagar-fontes': async (b) => apagarFontes(b),
+  'POST editar-fontes': async (b) => editarFontes(b),
   'POST aprofundar': async (b) => aprofundar(b.id),
   'POST aplicar': async (b) => aplicar(b.id, b.candidato),
   'POST confirmar': async (b) => reorganizar(b.id, { estado: 'completo' }),
@@ -210,7 +223,7 @@ export function iniciarServidor() {
     }
     if (req.headers['x-segredo'] !== chave) return responder(403, { erro: 'Acesso negado.' })
     const rota = ROTAS[`${req.method} ${new URL(req.url, 'http://x').pathname.slice(1)}`]
-    if (!rota) return responder(404, { erro: 'Ação desconhecida.' })
+    if (!rota) return responder(404, { erro: 'Acção desconhecida.' })
     try {
       responder(200, await rota(req.method === 'POST' ? await lerCorpo(req) : {}))
     } catch (e) {

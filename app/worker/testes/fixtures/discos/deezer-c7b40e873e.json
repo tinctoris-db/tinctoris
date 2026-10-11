@@ -1,0 +1,11 @@
+{
+ "url": "https://api.deezer.com/album/upc:8435383694201",
+ "status": 200,
+ "corpo": {
+  "error": {
+   "type": "DataException",
+   "message": "no data",
+   "code": 800
+  }
+ }
+}

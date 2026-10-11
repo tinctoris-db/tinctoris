@@ -1,0 +1,30 @@
+{
+ "url": "https://itunes.apple.com/search?term=O%20Ala%C3%BAde%20na%20Pen%C3%ADnsula%20Ib%C3%A9rica%20(s%C3%A9c.%20XV-XXI)%20Segr%C3%A9is%20de%20Lisboa%2C%20Manuel%20Morais&entity=album&limit=10",
+ "status": 200,
+ "corpo": {
+  "resultCount": 1,
+  "results": [
+   {
+    "wrapperType": "collection",
+    "collectionType": "Album",
+    "artistId": 1671462342,
+    "collectionId": 1671463427,
+    "artistName": "Segréis de Lisboa & Manuel Morais",
+    "collectionName": "O Alaúde na Península Ibérica (Séc. XV-XXI)",
+    "collectionCensoredName": "O Alaúde na Península Ibérica (Séc. XV-XXI)",
+    "artistViewUrl": "https://music.apple.com/us/artist/segr%C3%A9is-de-lisboa/1671462342?uo=4",
+    "collectionViewUrl": "https://music.apple.com/us/album/o-ala%C3%BAde-na-pen%C3%ADnsula-ib%C3%A9rica-s%C3%A9c-xv-xxi/1671463427?uo=4",
+    "artworkUrl60": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/20/ea/d7/20ead7df-0710-ed13-a826-628db1d353ca/198015608608.jpg/60x60bb.jpg",
+    "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/20/ea/d7/20ead7df-0710-ed13-a826-628db1d353ca/198015608608.jpg/100x100bb.jpg",
+    "collectionPrice": 9.99,
+    "collectionExplicitness": "notExplicit",
+    "trackCount": 23,
+    "copyright": "℗ 2023 Manuel Morais",
+    "country": "USA",
+    "currency": "USD",
+    "releaseDate": "2023-01-31T08:00:00Z",
+    "primaryGenreName": "Inspirational"
+   }
+  ]
+ }
+}

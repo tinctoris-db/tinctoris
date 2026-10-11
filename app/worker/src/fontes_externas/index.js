@@ -3,6 +3,7 @@ import * as B from './bibliograficas.js'
 import * as A from './audiovisuais.js'
 import * as C from './academicas.js'
 import { gallicaPesquisar } from './gallica.js'
+import { k10plusPorIsbn } from './k10plus.js'
 import { dspacePesquisar } from './repositorios.js'
 import { semelhanca, contido, normalizar } from './util.js'
 
@@ -125,9 +126,17 @@ async function porIdentificador(q, defs) {
       const r = await B.googleBooksPorIsbn(q.isbn, email, defs.google_books_api_key)
       if (r) return r
     } catch (_) {}
+    // (catálogo das bibliotecas alemãs: também teses e livros europeus que os outros dois não têm)
+    try {
+      const r = await k10plusPorIsbn(q.isbn, email)
+      if (r) return r
+    } catch (_) {}
   }
   return null
 }
+
+// Registo de um livro pelo ISBN (Open Library → Google Books → K10plus), ou null
+export const porIsbn = (isbn, defs) => porIdentificador({ isbn }, defs)
 
 // Pesquisa automática ao entrar um ficheiro. q: {genero, titulo, autor, artista, doi, isbn}
 export async function automatico(q, defs) {

@@ -14,6 +14,8 @@ import { correr } from './extracao.js'
 import * as F from './ficheiros.js'
 import { log } from './registo.js'
 import { esperarVez } from './intensidade.js'
+import { separarReferencias } from './referencias.js'
+import { pastaDoDisco } from './referencias_discos.js'
 
 // Nome base sem o número final: "matteo 3" → "matteo"; "matteo 3r" → "matteo"; "001" → "" (só números)
 export function nomeBase(ficheiro) {
@@ -134,19 +136,39 @@ export async function juntarGrupo(grupo) {
   }
 }
 
-// Espera que as imagens de uma pasta acabem de chegar e decide: juntar ou tratar uma a uma
+// Espera que as imagens de uma pasta acabem de chegar e decide: juntar ou tratar uma a uma.
+// tratarLivros: as fotografias soltas (na raiz da watch folder) com ISBN — código de barras ou ficha técnica de um
+// livro em papel — saem antes de juntar e fazem uma ficha sem ficheiro (ver referencias.js)
+// tratarDiscos: o mesmo para os discos (código de barras EAN/UPC que não é ISBN); e as imagens da pasta
+// watch_folder/Discos nunca são juntadas num PDF: soltas, cada uma é um disco; numa subpasta, a subpasta é um disco
+// (ver referencias_discos.js)
 const emEspera = new Map()
-export function agendarImagem(ficheiro, tratarUma) {
-  const dir = path.dirname(ficheiro)
-  const e = emEspera.get(dir) || { ficheiros: new Set(), t: null }
+export function agendarImagem(ficheiro, tratarUma, tratarLivros = null, tratarDiscos = null) {
+  const disco = tratarDiscos ? pastaDoDisco(ficheiro) : null
+  const dir = disco ? disco.pasta : path.dirname(ficheiro)
+  const chave = disco ? `disco:${dir}` : dir
+  const e = emEspera.get(chave) || { ficheiros: new Set(), t: null }
   e.ficheiros.add(ficheiro)
   clearTimeout(e.t)
   e.t = setTimeout(async () => {
-    emEspera.delete(dir)
-    const existentes = [...e.ficheiros].filter((f) => fs.existsSync(f))
+    emEspera.delete(chave)
+    let existentes = [...e.ficheiros].filter((f) => fs.existsSync(f))
+    if (disco) {
+      if (!existentes.length) return
+      await esperarVez()
+      tratarDiscos({ ficheiros: existentes, raiz: disco.raiz, umDisco: !disco.solto, nome: disco.nome })
+      return
+    }
     // (numa subpasta, o nome da fonte é o caminho das pastas: "tratados_ibéricos_de_vihuela - Libro_6")
     const rel = path.relative(PASTAS.watch, dir)
     const subpasta = rel && !rel.startsWith('..')
+    if (!subpasta && tratarLivros && existentes.length) {
+      await esperarVez()
+      const { livros, discos, resto } = await separarReferencias(existentes, { discos: !!tratarDiscos })
+      if (livros.length) tratarLivros(livros)
+      if (discos.length) tratarDiscos({ lidas: discos })
+      existentes = resto
+    }
     const nomePasta = subpasta ? rel.split(path.sep).join(' - ') : ''
     for (const g of agrupar(existentes, { pastaInteira: subpasta, nomePasta })) {
       if (g.ficheiros.length < 2) {
@@ -165,6 +187,6 @@ export function agendarImagem(ficheiro, tratarUma) {
         }
       }
     }
-  }, path.relative(PASTAS.watch, dir) ? 30000 : 8000) // (numa pasta grande a copiar, as imagens chegam aos poucos)
-  emEspera.set(dir, e)
+  }, disco?.solto ? 15000 : path.relative(PASTAS.watch, dir) ? 30000 : 8000) // (numa pasta grande a copiar, as imagens chegam aos poucos)
+  emEspera.set(chave, e)
 }

@@ -223,6 +223,53 @@ async function comparar(a, b) {
   return { baixa: Math.max(...baixa), alta: Math.max(...alta), deslocamento: o }
 }
 
+// Compara dois PDFs quaisquer (x, y = { abs, chave? }; a chave — sha256:tamanho, como na procura — aproveita a cache) com os mesmos
+// limites da procura: "igual" (o mesmo documento: junta-se sem perguntar), "parecido" (o Pedro decide), "diferente"
+// ou "sem_comparacao" (não é PDF ou não se consegue ler). Usado à entrada de ficheiros e no ecrã «Espaço».
+export async function compararFicheiros(x, y) {
+  const doc = async (d) => {
+    if (!/\.pdf$/i.test(d.abs) || !fs.existsSync(d.abs)) return null
+    const chave = d.chave || `${d.abs}:${fs.statSync(d.abs).size}`
+    const c = lerCache()
+    const n = c[chave]?.n || (await contarPaginas(d.abs))
+    if (!n) return null
+    ;(c[chave] ||= {}).n = n
+    return { abs: d.abs, chave, n }
+  }
+  const [dx, dy] = await Promise.all([doc(x), doc(y)])
+  if (!dx || !dy) return { resultado: 'sem_comparacao', paginas: [dx?.n || 0, dy?.n || 0] }
+  const paginas = [dx.n, dy.n]
+  const [a, b] = dx.n <= dy.n ? [dx, dy] : [dy, dx]
+  if (b.n - a.n > PAGINAS_A_MAIS) return { resultado: 'diferente', paginas, motivo: 'número de páginas' }
+  if (!(await pagina(a, 1)) || !(await pagina(b, 1))) return { resultado: 'sem_comparacao', paginas }
+  const r = await comparar(a, b)
+  await gravarCache()
+  const fim = { paginas, baixa: r.baixa, alta: r.alta }
+  if (r.alta > DUVIDOSO_ALTA || (a.n !== b.n && (a.n < 2 || r.baixa > A_MAIS_BAIXA))) return { ...fim, resultado: 'diferente' }
+  if (a.n === b.n && r.baixa <= CERTO_BAIXA && r.alta <= CERTO_ALTA) return { ...fim, resultado: 'igual' }
+  return { ...fim, resultado: 'parecido' }
+}
+
+// (no fim de uma série de comparações)
+export const guardarImpressoes = () => gravarCache(true)
+
+// A ficha cujo PDF tem a 1.ª página mais parecida (pelas impressões já guardadas na cache): pista para um ficheiro de
+// _duplicados de que não se sabe a origem. d = { abs, chave? }; porChave = Map(hash:tamanho → numero da ficha).
+// Devolve { numero, diferenca } ou null
+export async function maisParecidaPelaCapa(d, porChave) {
+  if (!/\.pdf$/i.test(d.abs) || !fs.existsSync(d.abs)) return null
+  const capa = await pagina({ abs: d.abs, chave: d.chave || `${d.abs}:${fs.statSync(d.abs).size}` }, 1)
+  if (!capa) return null
+  let melhor = null
+  for (const [chave, e] of Object.entries(lerCache())) {
+    const numero = porChave.get(chave)
+    if (!numero || !e.b?.[1]) continue
+    const d = diferenca(capa, e.b[1])
+    if (d <= CANDIDATO && (!melhor || d < melhor.diferenca)) melhor = { numero, diferenca: d }
+  }
+  return melhor
+}
+
 // Procura em todos os PDFs com ficha. Devolve { certos: [[id, id…]…], duvidosos: [par…], vistos }
 export async function procurar({ aoProgresso = () => {} } = {}) {
   await garantirSessao()
@@ -357,6 +404,8 @@ export async function juntarDuplicado(manterId, retirarId) {
     md.originais = juntarOriginais(md.originais, retirar.metadados.originais)
     md.originais_conjunto = juntarOriginais(md.originais_conjunto, retirar.metadados.originais_conjunto)
   }
+  // (onde está o exemplar em papel: escrito pelo utilizador, nunca se perde)
+  if (String(retirar.metadados?.exemplar_papel || '').trim()) md.exemplar_papel = [...new Set([md.exemplar_papel, retirar.metadados.exemplar_papel].map((x) => String(x || '').trim()).filter(Boolean))].join('; ')
   const alt = {
     tags: [...new Set([...(manter.tags || []), ...(retirar.tags || [])])],
     contextos: [...new Set([...(manter.contextos || []), ...(retirar.contextos || [])])],
@@ -433,6 +482,15 @@ export async function guardarDuvidosos(pares) {
   r.pares = pares.filter((p) => !r.decididos[chavePar(p.a, p.b)])
   await gravarRevisao(r)
   return r.pares.length
+}
+
+// Mais um par para o ecrã (sem apagar os que lá estão): ficheiro novo muito parecido com o de outra ficha
+export async function acrescentarDuvidoso(par) {
+  const r = lerRevisao()
+  const k = chavePar(par.a, par.b)
+  if (r.decididos[k] || r.pares.some((p) => chavePar(p.a, p.b) === k)) return
+  r.pares.push(par)
+  await gravarRevisao(r)
 }
 
 async function esquecerPares(ids) {

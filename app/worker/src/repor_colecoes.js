@@ -24,7 +24,7 @@ const CATALOGO = {
 // Fichas que voltam ao título do IMSLP: a nota «coleção sem frontispício» deixa de se aplicar, e o que a IA
 // acrescentou contra o catálogo sai (Corelli Op. 1 é impresso; o IMSLP diz que o Zelenka é uma obra)
 const DO_IMSLP = { 4657: { apagar: ['forma'] }, 7051: { conteudo_tipo: 'Obra' } }
-const FRONTISPICIO = /O PDF tem \d+ páginas e começa pela peça «[^»]*»: provavelmente uma coleção sem frontispício \(o título é o da 1\.ª peça\)\.\s*/
+const FRONTISPICIO = /O PDF tem \d+ páginas e começa pela peça «[^»]*»: provavelmente uma (?:coleção|colecção) sem frontispício \(o título é o da 1\.ª peça\)\.\s*/
 const vazio = (v) => v === null || v === undefined || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length)
 const nomes = (a) => (a || []).map((x) => x.apelido || x.literal).join(', ')
 
@@ -67,7 +67,7 @@ for (const p of plano) {
     if (vazio(md[k])) {
       md[k] = v
       mdMudou = true
-      linhas.push(`${k === 'catalogo' ? 'nº de catálogo' : k === 'colecao' ? 'coleção' : 'sugestão de catálogo'}: → «${v}»`)
+      linhas.push(`${k === 'catalogo' ? 'nº de catálogo' : k === 'colecao' ? 'colecção' : 'sugestão de catálogo'}: → «${v}»`)
     }
   }
   if (p.mdalt.catalogo && !CATALOGO[p.numero]) linhas.push(`(«${p.mdalt.catalogo}» continua como sugestão de catálogo: não é um nº de catálogo)`)
@@ -79,7 +79,7 @@ for (const p of plano) {
       md.nota_revisao = md.nota_revisao.replace(FRONTISPICIO, '').trim()
       if (!md.nota_revisao) delete md.nota_revisao
       mdMudou = true
-      linhas.push('nota «coleção sem frontispício»: sai (o título volta a ser o do IMSLP)')
+      linhas.push('nota «colecção sem frontispício»: sai (o título volta a ser o do IMSLP)')
     }
   }
   // Datas trocadas pela reanálise: só se assinalam

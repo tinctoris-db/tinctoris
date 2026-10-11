@@ -131,7 +131,7 @@ for (const p of PLANO) {
       const r = await servico('reorganizar', { id: alvo.id })
       console.log(`   ficheiro: ${r.ficheiro}`)
     } catch (e) {
-      console.log(`   (nome do ficheiro não atualizado: ${e.message})`)
+      console.log(`   (nome do ficheiro não actualizado: ${e.message})`)
     }
   }
   console.log(`   FEITO: ${todas.length} páginas`)

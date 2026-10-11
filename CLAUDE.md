@@ -54,6 +54,17 @@ artística e ensino. Programa e dados vivem na pasta de instalação. Manual: `R
   sozinhas no arranque.
 
 ## Preferências e decisões já tomadas
+- **Ortografia (4/10/2026):** todo o texto visível (interface, manuais, mensagens) em português europeu **anterior ao AO90**
+  (acção, actual, actividade, seleccionar, projecto, colecção, exacto, idéia…). Nunca mexer em nomes internos (classes de
+  estilo, rotas como `#/atividade`, chaves, nomes de ficheiros). Quem muda um valor guardado na base (opções de listas,
+  rótulos de campos) faz uma migração (modelo: `1790000051_ortografia_pre_ao90.js`).
+- **Idiomas (11/10/2026, 0.10.0-beta):** interface em português e inglês. Em `app/pb_public/app.js` todo o texto visível
+  fica em português dentro de `tr('…')` (literal simples; valores como `{n}`); a tradução inglesa (britânica) está em
+  `app/pb_public/idiomas/en.json`, com a chave = texto português exacto. Quem acrescenta ou muda um texto acrescenta a
+  tradução. Valores guardados na base (tipos, papéis, opções) ficam em português e só se traduzem ao mostrar (`tr(valor)`).
+- **Versões:** `MAJOR.MINOR.PATCH-beta`; funções novas sobem o 2.º número, correcções o 3.º. O número está em
+  `app/pb_public/app.js` (`VERSAO`), `app/worker/package.json` e `CITATION.cff`; as novidades em
+  `app/pb_public/novidades.json` (mostradas em «Acerca», PT/EN) e `NOVIDADES.md`.
 - **Nome e identidade (2/10/2026, versão beta):** TINCTORIS (Tratados, Inventários, Notação, Códices, Textos,
   Organologia, Registos, Iconografia e Sumários; EN: Treatises, …, Records, Iconography and Sources). Logótipo só
   tipográfico (maiúsculas espaçadas). Preto e branco, letra **Inter** (em `app/pb_public/fontes/`, sem internet).

@@ -38,7 +38,7 @@ const TIPO_POR_CSL = {
   song: 'Gravação',
   motion_picture: 'Vídeo',
   broadcast: 'Vídeo',
-  performance: 'Espetáculo ao vivo',
+  performance: 'Espectáculo ao vivo',
   legislation: 'Legislação',
   bill: 'Legislação',
   regulation: 'Legislação',

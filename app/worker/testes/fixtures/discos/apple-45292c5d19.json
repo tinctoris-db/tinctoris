@@ -1,0 +1,8 @@
+{
+ "url": "https://itunes.apple.com/lookup?upc=8447025954123&entity=song&limit=200",
+ "status": 200,
+ "corpo": {
+  "resultCount": 0,
+  "results": []
+ }
+}

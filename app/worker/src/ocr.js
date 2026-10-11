@@ -26,15 +26,28 @@ export async function ocrImagem(p, linguas) {
   return ocrImagemFicheiro(p, linguas)
 }
 
+// Resolução das páginas para o OCR: 300 dpi, ou mais quando o PDF declara páginas pequenas com imagens grandes
+// (digitalização a 600 ppi numa página de 5 × 7 cm: a 300 dpi ficava com 600 px e o OCR saía vazio — #504)
+const LADO_MINIMO = 3000
+async function resolucaoOcr(p) {
+  try {
+    const m = (await correr(BIN.pdfinfo, [p], { timeout: 30000 })).match(/Page size:\s*([\d.]+) x ([\d.]+) pts/)
+    const polegadas = m ? Math.max(Number(m[1]), Number(m[2])) / 72 : 0
+    if (polegadas > 0) return Math.min(1200, Math.max(300, Math.ceil(LADO_MINIMO / polegadas)))
+  } catch (_) {}
+  return 300
+}
+
 // OCR página a página. aoProgresso(pagina, total) é chamado após cada página.
 export async function ocrPdf(p, linguas, { primeira = 1, ultima = 0, paginas = 0, aoProgresso } = {}) {
   const total = ultima || paginas || 1
+  const dpi = String(await resolucaoOcr(p))
   const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'ocr-'))
   const partes = []
   try {
     for (let pg = primeira; pg <= total; pg++) {
       const base = path.join(tmp, 'pg')
-      await correr(BIN.pdftoppm, ['-r', '300', '-gray', '-png', '-singlefile', '-f', String(pg), '-l', String(pg), p, base], { timeout: 300000 })
+      await correr(BIN.pdftoppm, ['-r', dpi, '-gray', '-png', '-singlefile', '-f', String(pg), '-l', String(pg), p, base], { timeout: 300000 })
       let texto = ''
       try {
         texto = await ocrImagemFicheiro(base + '.png', linguas)

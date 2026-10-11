@@ -6,8 +6,8 @@ type: software
 authors:
   - family-names: "Sousa Silva"
     given-names: "Pedro"
-    affiliation: "ESMAE – Escola Superior de Música e Artes do Espetáculo, Politécnico do Porto"
-version: "0.9.0-beta"
+    affiliation: "ESMAE-Faculdade de Artes Performativas | Universidade Técnica do Porto | Centro de Estudos em Música"
+version: "0.10.0-beta"
 license: AGPL-3.0-or-later
 keywords:
   - musicology

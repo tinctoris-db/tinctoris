@@ -27,6 +27,9 @@ export const NAO_AUTOR = /^(missa[es]?|missas|misse|missarum|liber|libro|livro|p
 
 // Sinais de manuscrito / impresso no nome do ficheiro
 const NOME_MANUSCRITO = /\b(ms|mss|manuscri\w*|manoscritt\w*|handschrift\w*|autograph\w*|aut[óo]graf\w*|codex|c[óo]dice|cod)\b/i
+const NOME_VERSAO_DO_AUTOR = /\b(accepted|author'?s?|submitted|peer[\s-]?reviewed|pre[\s-]?print|post[\s-]?print)[\s_-]+manuscript\b/gi
+// (nome de ficheiro com a versão do autor de um artigo: «oup-accepted-manuscript-2019.pdf»)
+export const versaoDoAutor = (nome) => new RegExp(NOME_VERSAO_DO_AUTOR.source, 'i').test(String(nome || '').replace(/_/g, ' '))
 const NOME_IMPRESSO = /\b(impresso|printed|print|druck|stampa|edi[çc][ãa]o impressa)\b/i
 
 // Abreviaturas de arquivos usadas nos nomes dos ficheiros → sigla RISM (confirmadas pelo Pedro a 1/10/2026)
@@ -137,7 +140,9 @@ export function pistasDoNome(ficheiro) {
     } else r.titulo = resto
   }
 
-  if (NOME_MANUSCRITO.test(resto) || r.siglas.some((s) => /^(MM \d|Mss?\.?\s?\d)/i.test(s.cota))) r.forma = 'manuscrito'
+  // («accepted / author / submitted manuscript» é a versão do artigo aceite pela revista, não um manuscrito: #17098)
+  const semVersaoDoAutor = resto.replace(NOME_VERSAO_DO_AUTOR, ' ')
+  if (NOME_MANUSCRITO.test(semVersaoDoAutor) || r.siglas.some((s) => /^(MM \d|Mss?\.?\s?\d)/i.test(s.cota))) r.forma = 'manuscrito'
   else if (NOME_IMPRESSO.test(resto)) r.forma = 'impresso'
   return r
 }

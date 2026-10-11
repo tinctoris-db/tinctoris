@@ -11,7 +11,7 @@
 const CONTEXTOS = [
   "Leitura e Interpretação de Fontes",
   "Pesquisa Avançada em Música",
-  "Projeto Artístico e Tese",
+  "Projecto Artístico e Tese",
   "Ensino",
   "Produção artística",
 ]
@@ -22,7 +22,7 @@ const c = (chave, rotulo, tipo, extra) => Object.assign({ chave, rotulo, tipo: t
 const ARQUIVO = [
   c("arquivo", "Arquivo / biblioteca", "texto", { csl: "archive" }),
   c("local_arquivo", "Local do arquivo", "texto", { csl: "archive-place" }),
-  c("fundo", "Fundo / coleção", "texto", { csl: "archive_collection" }),
+  c("fundo", "Fundo / colecção", "texto", { csl: "archive_collection" }),
   c("cota", "Cota", "texto", { csl: "call-number" }),
 ]
 const ACESSO = [c("data_acesso", "Data de acesso", "data", { csl: "accessed" })]
@@ -42,7 +42,7 @@ const TIPOS = [
   ["Edição crítica", "Escrita", "book", "Edição crítica", "", [
     c("catalogo", "Nº de catálogo (BWV, K., op.)"),
     c("fontes_base", "Fontes de base", "texto_longo"),
-    c("colecao", "Coleção / série", "texto", { csl: "collection-title" }),
+    c("colecao", "Colecção / série", "texto", { csl: "collection-title" }),
     c("volume", "Volume", "texto", { csl: "volume" }),
     c("edicao", "Edição", "texto", { csl: "edition" }),
   ]],
@@ -51,19 +51,19 @@ const TIPOS = [
     c("instrumentacao", "Instrumentação"),
     c("tonalidade", "Tonalidade"),
     c("n_chapa", "Nº de chapa", "texto", { csl: "number" }),
-    c("colecao", "Coleção / série", "texto", { csl: "collection-title" }),
+    c("colecao", "Colecção / série", "texto", { csl: "collection-title" }),
     c("edicao", "Edição", "texto", { csl: "edition" }),
   ]],
   ["Livro", "Escrita", "book", "", "secundária", [
     c("edicao", "Edição", "texto", { csl: "edition" }),
-    c("colecao", "Coleção / série", "texto", { csl: "collection-title" }),
+    c("colecao", "Colecção / série", "texto", { csl: "collection-title" }),
     c("volume", "Volume", "texto", { csl: "volume" }),
     c("n_paginas", "Nº de páginas", "numero", { csl: "number-of-pages" }),
   ]],
   ["Capítulo de livro", "Escrita", "chapter", "", "secundária", [
     c("livro", "Título do livro", "texto", { csl: "container-title" }),
     c("paginas", "Páginas", "texto", { csl: "page" }),
-    c("colecao", "Coleção / série", "texto", { csl: "collection-title" }),
+    c("colecao", "Colecção / série", "texto", { csl: "collection-title" }),
   ]],
   ["Artigo", "Escrita", "article-journal", "", "secundária", [
     c("revista", "Revista", "texto", { csl: "container-title" }),
@@ -137,7 +137,7 @@ const TIPOS = [
     c("duracao", "Duração", "texto", { csl: "dimensions" }),
     ...ACESSO,
   ]],
-  ["Espetáculo ao vivo", "Audiovisual", "performance", "", "primária", [
+  ["Espectáculo ao vivo", "Audiovisual", "performance", "", "primária", [
     c("evento", "Evento / festival", "texto", { csl: "event-title" }),
     c("local_evento", "Local", "texto", { csl: "event-place" }),
     c("interpretes", "Intérpretes", "texto_longo"),
@@ -152,7 +152,7 @@ const TIPOS = [
   // ---- Instrumentos
   ["Instrumento histórico", "Instrumento", "document", "Instrumento musical", "primária", [
     c("local_construcao", "Local de construção"),
-    c("colecao_museu", "Coleção / museu", "texto", { csl: "archive" }),
+    c("colecao_museu", "Colecção / museu", "texto", { csl: "archive" }),
     c("n_inventario", "Nº de inventário", "texto", { csl: "call-number" }),
     c("hornbostel_sachs", "Classificação Hornbostel-Sachs"),
     c("materiais", "Materiais", "texto", { csl: "medium" }),

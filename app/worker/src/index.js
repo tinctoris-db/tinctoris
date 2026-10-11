@@ -5,6 +5,8 @@ import { PASTAS } from './config.js'
 import { pb, esperarPocketBase, definicoes } from './pb.js'
 import { ignorar, categoriaPorExtensao } from './ficheiros.js'
 import { agendarImagem } from './juntar.js'
+import { tratarReferencias } from './referencias.js'
+import { tratarDiscos, PASTA_DISCOS } from './referencias_discos.js'
 import { filaEntrada, cicloOcr, eFonte, porDeLado, retomarInterrompidas } from './processador.js'
 import { iniciarServidor } from './servidor.js'
 import { log } from './registo.js'
@@ -16,6 +18,8 @@ process.on('unhandledRejection', (e) => log.erro(`Erro inesperado: ${e?.stack ||
 
 await fsp.mkdir(PASTAS.biblioteca, { recursive: true })
 await fsp.mkdir(PASTAS.watch, { recursive: true })
+// (fotografias de discos: cada imagem desta pasta é um disco; ver referencias_discos.js)
+await fsp.mkdir(PASTA_DISCOS, { recursive: true })
 
 log.info('A ligar à base de dados...')
 await esperarPocketBase()
@@ -40,18 +44,23 @@ const vigia = chokidar.watch(PASTAS.watch, {
 let cadeiaLado = Promise.resolve()
 vigia.on('add', (p) => {
   // Imagens de páginas soltas: esperar pelas irmãs da mesma pasta e juntá-las num só PDF
-  if (eFonte(p) && categoriaPorExtensao(p) === 'imagem') agendarImagem(p, (f) => filaEntrada.juntar(f))
+  // (fotografias soltas do ISBN / ficha técnica de um livro em papel, ou do código de barras de um disco, e as imagens
+  // da pasta Discos: ficha sem ficheiro, ver referencias.js e referencias_discos.js)
+  if (eFonte(p) && categoriaPorExtensao(p) === 'imagem') agendarImagem(p, (f) => filaEntrada.juntar(f), tratarReferencias, tratarDiscos)
   else if (eFonte(p)) filaEntrada.juntar(p)
   else cadeiaLado = cadeiaLado.then(() => porDeLado(p)).catch((e) => log.erro(`Pôr de lado ${p}: ${e.message}`))
 })
 vigia.on('error', (e) => log.erro(`Watch folder: ${e.message}`))
 vigia.on('ready', () => {
   log.info(`A vigiar ${PASTAS.watch}`)
-  retomarInterrompidas().catch((e) => log.erro(`Retomar fontes «A processar»: ${e.message}`))
+  // (o OCR só arranca depois: com a fila já cheia, as fichas «por rever» esperam pela sua vez)
+  retomarInterrompidas()
+    .catch((e) => log.erro(`Retomar fontes «A processar»: ${e.message}`))
+    .finally(() => {
+      cicloOcr()
+      setInterval(cicloOcr, 60000)
+    })
 })
-
-cicloOcr()
-setInterval(cicloOcr, 60000)
 
 const sair = async () => {
   await vigia.close()

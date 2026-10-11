@@ -79,8 +79,11 @@ export async function lerTextoSimples(p) {
 // ---- Identificadores
 
 export function encontrarDoi(texto) {
-  const m = /\b(10\.\d{4,9}\/[^\s"'<>\]]+)/i.exec(texto || '')
-  return m ? m[1].replace(/[.,;:)\]]+$/, '') : ''
+  const todos = [...String(texto || '').matchAll(/\b(10\.\d{4,9}\/[^\s"'<>\]]+)/gi)].map((m) => m[1].replace(/[.,;:)\]]+$/, ''))
+  if (!todos.length) return ''
+  // (DOI cortado na mudança de linha — «doi:10.1371/journal.» + «pone.0158684» —: fica o completo, se aparecer depois)
+  const inteiro = todos.find((d) => d.toLowerCase().startsWith(todos[0].toLowerCase() + '.'))
+  return inteiro || todos[0]
 }
 
 function isbnValido(d) {
@@ -97,14 +100,63 @@ function isbnValido(d) {
   return false
 }
 
-export function encontrarIsbn(texto) {
+// solto: também um número com hífenes numa linha à parte, quando a palavra «ISBN» aparece no texto
+// (fichas técnicas em duas colunas: «ISBN» à esquerda e «972-8696-08-6» à direita, lidas em linhas separadas)
+export function encontrarIsbn(texto, { solto = false } = {}) {
   const re = /ISBN(?:-1[03])?[:\s]*((?:97[89][\s-]?)?(?:\d[\s-]?){9}[\dXx])/g
   let m
   while ((m = re.exec(texto || ''))) {
     const d = m[1].replace(/[\s-]/g, '').toUpperCase()
     if (isbnValido(d)) return d
   }
+  if (solto && /\bISBN\b/i.test(texto || '')) {
+    const linha = /^\s*((?:97[89]-)?\d{1,5}-\d{1,7}-\d{1,7}-[\dXx])\s*$/gm
+    while ((m = linha.exec(texto || ''))) {
+      const d = m[1].replace(/-/g, '').toUpperCase()
+      if (isbnValido(d)) return d
+    }
+  }
   return ''
+}
+
+// Todos os ISBN válidos de um texto, em ISBN-13 (uma ficha técnica pode ter o da capa dura e o da edição de bolso)
+export function todosOsIsbn(texto) {
+  const out = new Set()
+  const t = String(texto || '')
+  const re = /ISBN(?:-1[03])?[:\s]*((?:97[89][\s-]?)?(?:\d[\s-]?){9}[\dXx])/g
+  let m
+  while ((m = re.exec(t))) out.add(isbn13(m[1]))
+  if (/\bISBN\b/i.test(t)) {
+    const linha = /^\s*((?:97[89]-)?\d{1,5}-\d{1,7}-\d{1,7}-[\dXx])\s*(\(.*\))?\s*$/gm
+    while ((m = linha.exec(t))) out.add(isbn13(m[1]))
+  }
+  out.delete('')
+  return [...out]
+}
+
+// Código de barras EAN-13 de um livro (978/979 + dígito de controlo) → ISBN-13; outros códigos → ''
+export const isbnDoCodigo = (c) => (/^97[89]\d{10}$/.test(String(c || '')) && isbnValido(String(c)) ? String(c) : '')
+
+// ISBN-13 de um ISBN-10 ou 13 (sem hífenes); '' se não for válido. Serve para comparar os dois formatos.
+export function isbn13(isbn) {
+  const d = String(isbn || '').replace(/[\s-]/g, '').toUpperCase()
+  if (!isbnValido(d)) return ''
+  if (d.length === 13) return d
+  const base = '978' + d.slice(0, 9)
+  let s = 0
+  for (let i = 0; i < 12; i++) s += Number(base[i]) * (i % 2 ? 3 : 1)
+  return base + ((10 - (s % 10)) % 10)
+}
+
+// ISBN-10 de um ISBN-13 que começa por 978 ('' nos outros)
+export function isbn10(isbn) {
+  const d = isbn13(isbn)
+  if (!d.startsWith('978')) return ''
+  const base = d.slice(3, 12)
+  let s = 0
+  for (let i = 0; i < 9; i++) s += Number(base[i]) * (10 - i)
+  const c = (11 - (s % 11)) % 11
+  return base + (c === 10 ? 'X' : String(c))
 }
 
 // Título provável a partir do nome do ficheiro ("Bach_-_Fuga_BWV_578.pdf" -> "Bach - Fuga BWV 578")

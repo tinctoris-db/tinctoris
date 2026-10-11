@@ -2,9 +2,9 @@
 
 <!-- Gerado por app/worker/src/creditos.js a partir de app/pb_public/creditos.json: não editar à mão. -->
 
-## Conceção e desenvolvimento
+## Concepção e desenvolvimento
 
-Pedro Sousa Silva (ESMAE – Politécnico do Porto), com assistência do Claude (Anthropic).
+Pedro Sousa Silva (ESMAE-Faculdade de Artes Performativas | Universidade Técnica do Porto | Centro de Estudos em Música), vibe coding via Claude (Anthropic).
 
 ## Contribuições para o código
 
@@ -23,9 +23,9 @@ Pedro Sousa Silva (ESMAE – Politécnico do Porto), com assistência do Claude 
 
 Só aparecem os testers que deixaram o nome e marcaram «Aceito aparecer nos créditos» no formulário de comentários.
 
-## Projetos e catálogos
+## Projectos e catálogos
 
-O TINCTORIS existe graças ao trabalho aberto destes projetos:
+O TINCTORIS existe graças ao trabalho aberto destes projectos:
 
 - **RISM**, fontes musicais
 - **DIAMM**, música medieval

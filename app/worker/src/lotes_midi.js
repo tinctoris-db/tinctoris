@@ -194,7 +194,7 @@ export async function livroPeloNome(chave, { excluirId = '' } = {}) {
     metadados: {
       ...Object.fromEntries(['titulo_fonte', 'titulo_uniforme', 'rism', 'rism_serie', 'exemplares'].filter((k) => md[k]).map((k) => [k, md[k]])),
       ...(md.titulo_fonte ? {} : { titulo_fonte: livro.titulo }),
-      fonte_original: `${ano ? `Impresso/edição ${ano}` : 'Coleção'}${md.rism_serie ? ` (${md.rism_serie})` : ''}; PDF na ficha ${numeroFicha(livro.numero)} (mesmo nome de ficheiro)`,
+      fonte_original: `${ano ? `Impresso/edição ${ano}` : 'Colecção'}${md.rism_serie ? ` (${md.rism_serie})` : ''}; PDF na ficha ${numeroFicha(livro.numero)} (mesmo nome de ficheiro)`,
     },
   }
 }

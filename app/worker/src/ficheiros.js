@@ -4,6 +4,7 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { seculoParaAnos } from './musica_antiga.js'
+import { PASTAS } from './config.js'
 
 const EXTENSOES = {
   pdf: ['pdf'],
@@ -118,7 +119,17 @@ export async function mover(origem, destinoDir, nome) {
   const ext = path.extname(nome)
   const base = nome.slice(0, nome.length - ext.length)
   let alvo = path.join(destinoDir, nome)
-  for (let i = 2; fs.existsSync(alvo) && path.resolve(alvo) !== path.resolve(origem); i++) {
+  // (o disco do Mac não distingue maiúsculas: «…-barsanti-…» e «…-Barsanti-…» são o mesmo ficheiro, não um repetido)
+  const mesmo = (a, b) => {
+    try {
+      const x = fs.statSync(a)
+      const y = fs.statSync(b)
+      return x.ino === y.ino && x.dev === y.dev
+    } catch (_) {
+      return false
+    }
+  }
+  for (let i = 2; fs.existsSync(alvo) && path.resolve(alvo) !== path.resolve(origem) && !mesmo(alvo, origem); i++) {
     alvo = path.join(destinoDir, `${base}_${i}${ext}`)
   }
   if (path.resolve(alvo) === path.resolve(origem)) return alvo
@@ -133,9 +144,12 @@ export async function mover(origem, destinoDir, nome) {
 }
 
 // Apaga pastas vazias deixadas na watch folder (sem apagar a própria raiz).
-export async function limparPastasVazias(dir, raiz) {
+// A pasta watch_folder/Discos (fotografias de discos, ver referencias_discos.js) nunca se apaga, mesmo vazia.
+// (watch: a raiz da watch folder; os testes usam outra)
+const ePastaDosDiscos = (p, watch) => path.resolve(path.dirname(p)) === path.resolve(watch) && path.basename(p).normalize('NFC').toLowerCase() === 'discos'
+export async function limparPastasVazias(dir, raiz, { watch = PASTAS.watch } = {}) {
   let atual = dir
-  while (path.resolve(atual) !== path.resolve(raiz) && atual.startsWith(raiz)) {
+  while (path.resolve(atual) !== path.resolve(raiz) && atual.startsWith(raiz) && !ePastaDosDiscos(atual, watch)) {
     const itens = (await fsp.readdir(atual).catch(() => ['x'])).filter((f) => f !== '.DS_Store')
     if (itens.length) break
     await fsp.rm(atual, { recursive: true, force: true })

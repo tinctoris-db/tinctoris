@@ -72,3 +72,35 @@ export async function k10plusPesquisar({ titulo, autor, ano }, email, { palavras
   const xml = await obterTexto(`${SRU}?version=1.1&operation=searchRetrieve&maximumRecords=8&recordSchema=marcxml&query=${encodeURIComponent(partes.join(' and '))}`, { email })
   return registosSru(xml).map(candidatoMarc).filter(Boolean)
 }
+
+// Pelo ISBN (livros modernos fotografados pelo código de barras ou pela ficha técnica): o registo da própria edição.
+// Teses («Dissertation», «Hochschulschrift»): tipo, universidade e grau; o título paralelo («= De oorsprong…») sai do título.
+export async function k10plusPorIsbn(isbn, email) {
+  const xml = await obterTexto(`${SRU}?version=1.1&operation=searchRetrieve&maximumRecords=3&recordSchema=marcxml&query=${encodeURIComponent(`pica.isb=${isbn}`)}`, { email })
+  for (const r of registosSru(xml)) {
+    const campos = camposMarc(r)
+    const isbns = marc(campos, '020', 'a9').join(' ').replace(/-/g, '')
+    if (!isbns.includes(isbn)) continue
+    const c = candidatoMarc(r)
+    if (!c) continue
+    const [principal, paralelo] = String(marc(campos, '245', 'a')[0] || c.titulo).split(/\s+=\s+/)
+    const resto = (marc(campos, '245', 'b')[0] || '').trim()
+    c.titulo = [principal, resto && !resto.startsWith('=') ? resto : ''].filter(Boolean).join(': ').replace(/\s*[/:]\s*$/, '').replace(/\s+/g, ' ').trim()
+    if (paralelo || resto.startsWith('=')) c.metadados.titulo_paralelo = (paralelo || resto.replace(/^=\s*/, '')).replace(/\s*[/:]\s*$/, '').trim()
+    const tese = campos.find((x) => x.tag === '502')
+    if (tese || /Hochschulschrift/i.test(marc(campos, '655', 'a').join(' '))) {
+      c.tipo_sugerido = 'Tese / dissertação'
+      const sub = (k) => ((tese?.sub || []).find(([x]) => x === k) || [])[1] || ''
+      if (/dissert|doktor|phd|doctor/i.test(sub('b'))) c.metadados.grau = 'Doutoramento'
+      else if (/master|magister/i.test(sub('b'))) c.metadados.grau = 'Mestrado'
+      if (sub('c')) c.metadados.instituicao = sub('c')
+      if (!c.data && sub('d')) c.data = sub('d')
+    }
+    // (num livro moderno, os exemplares das bibliotecas alemãs e o nº VD não interessam)
+    for (const k of ['forma', 'vd', 'outros_exemplares', 'outras_digitalizacoes']) delete c.metadados[k]
+    if (/Seiten|S\.|p\.|pages/i.test(c.metadados.formato || '')) c.metadados.n_paginas = (/^\s*(\d+)/.exec(c.metadados.formato) || [])[1] || ''
+    if (!c.metadados.n_paginas) delete c.metadados.n_paginas
+    return { ...c, isbn, confianca: 1 }
+  }
+  return null
+}

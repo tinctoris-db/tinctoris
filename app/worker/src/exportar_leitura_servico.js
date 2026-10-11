@@ -1,0 +1,218 @@
+// «Cópia de leitura (disco externo)» nas Definições (pedido do Pedro, 5/10/2026).
+// O exportador (exportar_leitura.js) usa ~1,3 GB de memória com a biblioteca inteira: corre num processo à parte
+// (node … --json, um objecto por linha) e este módulo só guarda o estado para a interface ir lendo.
+//   estados: parado | a_simular | simulado | a_copiar | feito | erro | parado_pelo_utilizador
+// Um trabalho de cada vez. «Actualizar» só depois de uma simulação da mesma pasta; o exportador volta a planear e,
+// se agora apagasse mais ficheiros do que a simulação mostrou (--max-apagar), recusa antes de mexer em nada — salvo se os
+// ficheiros a mais forem de fichas que mudaram de nome entretanto (a fila de reanálise renomeia ficheiros).
+// Quando o plano apaga muito (ver FORMATO.md §5), só avança com o número de ficheiros a apagar escrito pelo utilizador.
+// «Parar» interrompe com cuidado (acaba o ficheiro em curso e guarda a marca); a próxima actualização continua daí.
+import fs from 'node:fs'
+import fsp from 'node:fs/promises'
+import path from 'node:path'
+import { spawn, execFile } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { PASTAS } from './config.js'
+import { foraDasProtegidas } from './exportar_leitura.js'
+import { comPrioridade } from './intensidade.js'
+import { log } from './registo.js'
+
+const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'exportar_leitura.js')
+const FICHEIRO = path.join(PASTAS.dados, 'exportar-leitura.json')
+const MARCA = '.tinctoris-leitura.json'
+const PASTA_NO_DISCO = 'TINCTORIS'
+
+let trabalho = { estado: 'parado' }
+let filho = null
+let pedidoParar = false
+
+const ocupado = () => trabalho.estado === 'a_simular' || trabalho.estado === 'a_copiar'
+const real = (p) => {
+  try {
+    return fs.realpathSync(p)
+  } catch {
+    return path.resolve(p)
+  }
+}
+
+// Caminho completo, com a pasta onde ficaria já existente, fora do TINCTORIS (e sem o conter).
+// (a comparação ignora maiúsculas e formas Unicode, como o disco do Mac: foraDasProtegidas em exportar_leitura.js)
+export function validarDestino(destino) {
+  let d = String(destino || '').trim()
+  if (!d || d.includes('\0') || !path.isAbsolute(d)) throw new Error('Escolha um disco da lista ou escreva o caminho completo da pasta (começa por /).')
+  d = path.resolve(d)
+  const pai = path.dirname(d)
+  if (!fs.existsSync(pai)) throw new Error(`A pasta onde ficaria a cópia não existe (o disco está ligado?): ${pai}`)
+  if (!foraDasProtegidas(d)) throw new Error('A cópia não pode ficar dentro da pasta do TINCTORIS (nem a pasta do TINCTORIS dentro da cópia).')
+  return d
+}
+
+// ---------------------------------------------------------------------------
+// Discos externos ligados (pela lista de volumes montados do Mac)
+
+async function exportadoEm(pasta) {
+  try {
+    return JSON.parse(await fsp.readFile(path.join(pasta, MARCA), 'utf8')).exportado_em || 'sim'
+  } catch {
+    return null
+  }
+}
+
+async function lerDiscos() {
+  const saida = await new Promise((ok) => execFile('/sbin/mount', [], { encoding: 'utf8' }, (e, o) => ok(e ? '' : o)))
+  let dispositivoBiblioteca = null
+  try {
+    dispositivoBiblioteca = fs.statSync(PASTAS.raiz).dev
+  } catch {}
+  const out = []
+  for (const l of saida.split('\n')) {
+    const m = l.match(/^.+? on (\/Volumes\/.+) \(([^)]*)\)\s*$/)
+    if (!m) continue
+    const [, ponto, opcoes] = m
+    const o = opcoes.split(',').map((x) => x.trim().toLowerCase())
+    if (o.includes('nobrowse') || o[0] === 'autofs' || real(ponto) === '/') continue
+    try {
+      // (o disco onde a biblioteca vive não serve de destino: a cópia seria no mesmo disco)
+      if (fs.statSync(ponto).dev === dispositivoBiblioteca) continue
+      const sf = await fsp.statfs(ponto)
+      const destino = path.join(ponto, PASTA_NO_DISCO)
+      out.push({ nome: path.basename(ponto), ponto, destino, sistema: o[0], exfat: o[0] === 'exfat', livre: sf.bavail * sf.bsize, total: sf.blocks * sf.bsize, copia: await exportadoEm(destino) })
+    } catch {}
+  }
+  return out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+}
+
+let discosCache = { quando: 0, discos: [] }
+async function discos() {
+  if (Date.now() - discosCache.quando > 4000) discosCache = { quando: Date.now(), discos: await lerDiscos() }
+  return discosCache.discos
+}
+
+function ultimoDestino() {
+  try {
+    return JSON.parse(fs.readFileSync(FICHEIRO, 'utf8')).destino || ''
+  } catch {
+    return ''
+  }
+}
+function lembrarDestino(destino) {
+  try {
+    fs.mkdirSync(path.dirname(FICHEIRO), { recursive: true })
+    fs.writeFileSync(FICHEIRO, JSON.stringify({ destino }, null, 2))
+  } catch (e) {
+    log.aviso(`Cópia de leitura: destino não guardado (${e.message})`)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// O processo do exportador
+
+function tratar(o) {
+  if (o.tipo === 'progresso') trabalho.progresso = o
+  else if (o.tipo === 'plano') trabalho.plano = { ...o, quando: Date.now() }
+  else if (o.tipo === 'fim') {
+    if (o.simulacao) trabalho.estado = 'simulado'
+    else {
+      trabalho.estado = 'feito'
+      trabalho.resultado = o
+    }
+  } else if (o.tipo === 'erro') {
+    trabalho.erro = { mensagem: o.mensagem, codigo: o.codigo || '' }
+    trabalho.estado = o.codigo === 'interrompido' ? 'parado_pelo_utilizador' : 'erro'
+  }
+}
+
+function lancar(destino, aplicar, confirmarApagar) {
+  const args = ['--no-deprecation', SCRIPT, '--destino', destino, '--base', path.join(PASTAS.pbDados, 'data.db'), '--origem', PASTAS.biblioteca, '--json', '--vigiar-stdin']
+  if (aplicar) {
+    const pl = trabalho.plano
+    args.push('--aplicar', '--max-apagar', String(pl.nApagar), '--max-apagar-outros', String(pl.nApagar - (pl.nApagarRenomeados || 0)))
+    if (confirmarApagar != null) args.push('--confirmar-apagar', String(confirmarApagar))
+  }
+  // (em «Poupança» o processo corre nos núcleos económicos, como o resto do trabalho de fundo)
+  const [bin, a] = comPrioridade(process.execPath, args)
+  pedidoParar = false
+  const f = spawn(bin, a, { cwd: path.dirname(SCRIPT), stdio: ['pipe', 'pipe', 'pipe'] })
+  filho = f
+  let resto = ''
+  let erros = ''
+  f.stdout.setEncoding('utf8')
+  f.stdout.on('data', (d) => {
+    resto += d
+    const linhas = resto.split('\n')
+    resto = linhas.pop()
+    for (const l of linhas) {
+      try {
+        tratar(JSON.parse(l))
+      } catch {}
+    }
+  })
+  f.stderr.setEncoding('utf8')
+  f.stderr.on('data', (d) => (erros = (erros + d).slice(-2000)))
+  f.stdin.on('error', () => {})
+  f.on('error', (e) => {
+    trabalho.erro = { mensagem: `Não foi possível lançar o exportador: ${e.message}`, codigo: '' }
+    trabalho.estado = 'erro'
+  })
+  f.on('close', (codigo, sinal) => {
+    if (filho === f) filho = null
+    if (resto.trim())
+      try {
+        tratar(JSON.parse(resto))
+      } catch {}
+    if (ocupado()) {
+      // (acabou sem dizer «fim» nem «erro»: parado de fora ou rebentou)
+      if (pedidoParar) trabalho.estado = 'parado_pelo_utilizador'
+      else {
+        trabalho.estado = 'erro'
+        trabalho.erro = { mensagem: `O exportador terminou sem acabar (${sinal || 'código ' + codigo}).${erros.trim() ? ' ' + erros.trim().split('\n').pop() : ''}`, codigo: '' }
+      }
+    }
+    trabalho.fim = Date.now()
+    if (trabalho.estado === 'feito') log.info(`Cópia de leitura em ${destino}: ${trabalho.resultado.copiados} copiados, ${trabalho.resultado.apagados} apagados, ${trabalho.resultado.nErros} erros (${trabalho.resultado.segundos} s).`)
+    else if (trabalho.estado === 'erro') log.erro(`Cópia de leitura em ${destino}: ${trabalho.erro?.mensagem}`)
+    else if (trabalho.estado === 'parado_pelo_utilizador') log.info(`Cópia de leitura em ${destino}: parada pelo utilizador.`)
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Para o servidor
+
+export async function estado() {
+  return { ...trabalho, ultimoDestino: ultimoDestino(), discos: await discos(), agora: Date.now() }
+}
+
+export async function simular({ destino } = {}) {
+  if (ocupado()) throw new Error('Já há uma cópia de leitura a decorrer.')
+  const d = validarDestino(destino)
+  lembrarDestino(d)
+  trabalho = { estado: 'a_simular', destino: d, progresso: { tipo: 'progresso', fase: 'planear', feitos: 0, total: 0 }, inicio: Date.now() }
+  lancar(d, false)
+  return estado()
+}
+
+export async function aplicar({ destino, confirmarApagar } = {}) {
+  if (ocupado()) throw new Error('Já há uma cópia de leitura a decorrer.')
+  const d = validarDestino(destino)
+  if (trabalho.estado !== 'simulado' || trabalho.destino !== d || !trabalho.plano) throw new Error('Veja primeiro o que vai mudar nesta pasta («Ver o que vai mudar»).')
+  const pl = trabalho.plano
+  if (pl.amostraSobreCompleta) throw new Error('Esta pasta tem uma cópia completa: uma amostra não a pode actualizar.')
+  const confirmado = confirmarApagar != null && String(confirmarApagar).trim() !== '' ? Number(confirmarApagar) : null
+  if (pl.precisaConfirmacaoForte && confirmado !== pl.nApagar)
+    throw new Error(`Esta actualização apaga ${pl.nApagar.toLocaleString('pt-PT')} ficheiros do disco: para confirmar, escreva o número ${pl.nApagar}. Nada foi alterado.`)
+  trabalho = { estado: 'a_copiar', destino: d, plano: pl, progresso: { tipo: 'progresso', fase: 'planear', feitos: 0, total: 0 }, inicio: Date.now() }
+  log.info(`Cópia de leitura: a actualizar ${d}…`)
+  lancar(d, true, pl.precisaConfirmacaoForte ? confirmado : null)
+  return estado()
+}
+
+export async function parar() {
+  const f = filho
+  if (!f || !ocupado()) return estado()
+  pedidoParar = true
+  trabalho.a_parar = true
+  f.kill('SIGTERM')
+  // (acaba o ficheiro em curso; se demorar demais, corta-se: a cópia retoma na mesma)
+  setTimeout(() => filho === f && f.kill('SIGKILL'), 30000).unref()
+  return estado()
+}

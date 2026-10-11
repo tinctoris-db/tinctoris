@@ -1,0 +1,67 @@
+{
+ "url": "https://api.deezer.com/search/album?q=a%20garden%20of%20black%20flowers&limit=10",
+ "status": 200,
+ "corpo": {
+  "data": [
+   {
+    "id": 731753931,
+    "title": "A Garden of Black Flowers",
+    "link": "https://www.deezer.com/album/731753931",
+    "cover": "https://api.deezer.com/album/731753931/image",
+    "cover_small": "https://cdn-images.dzcdn.net/images/cover/13a7a74b68549d12de8362574fe77a22/56x56-000000-80-0-0.jpg",
+    "cover_medium": "https://cdn-images.dzcdn.net/images/cover/13a7a74b68549d12de8362574fe77a22/250x250-000000-80-0-0.jpg",
+    "cover_big": "https://cdn-images.dzcdn.net/images/cover/13a7a74b68549d12de8362574fe77a22/500x500-000000-80-0-0.jpg",
+    "cover_xl": "https://cdn-images.dzcdn.net/images/cover/13a7a74b68549d12de8362574fe77a22/1000x1000-000000-80-0-0.jpg",
+    "md5_image": "13a7a74b68549d12de8362574fe77a22",
+    "genre_id": 98,
+    "nb_tracks": 14,
+    "record_type": "album",
+    "tracklist": "https://api.deezer.com/album/731753931/tracks",
+    "explicit_lyrics": false,
+    "artist": {
+     "id": 312058321,
+     "name": "astrophil & stella",
+     "link": "https://www.deezer.com/artist/312058321",
+     "picture": "https://api.deezer.com/artist/312058321/image",
+     "picture_small": "https://cdn-images.dzcdn.net/images/artist/13a7a74b68549d12de8362574fe77a22/56x56-000000-80-0-0.jpg",
+     "picture_medium": "https://cdn-images.dzcdn.net/images/artist/13a7a74b68549d12de8362574fe77a22/250x250-000000-80-0-0.jpg",
+     "picture_big": "https://cdn-images.dzcdn.net/images/artist/13a7a74b68549d12de8362574fe77a22/500x500-000000-80-0-0.jpg",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/13a7a74b68549d12de8362574fe77a22/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/artist/312058321/top?limit=50",
+     "type": "artist"
+    },
+    "type": "album"
+   },
+   {
+    "id": 881345302,
+    "title": "Unquiet Grave - The Ultimate Goth Collection",
+    "link": "https://www.deezer.com/album/881345302",
+    "cover": "https://api.deezer.com/album/881345302/image",
+    "cover_small": "https://cdn-images.dzcdn.net/images/cover/a88c0307d30b6a828cbf0f0247f2b073/56x56-000000-80-0-0.jpg",
+    "cover_medium": "https://cdn-images.dzcdn.net/images/cover/a88c0307d30b6a828cbf0f0247f2b073/250x250-000000-80-0-0.jpg",
+    "cover_big": "https://cdn-images.dzcdn.net/images/cover/a88c0307d30b6a828cbf0f0247f2b073/500x500-000000-80-0-0.jpg",
+    "cover_xl": "https://cdn-images.dzcdn.net/images/cover/a88c0307d30b6a828cbf0f0247f2b073/1000x1000-000000-80-0-0.jpg",
+    "md5_image": "a88c0307d30b6a828cbf0f0247f2b073",
+    "genre_id": 152,
+    "nb_tracks": 127,
+    "record_type": "album",
+    "tracklist": "https://api.deezer.com/album/881345302/tracks",
+    "explicit_lyrics": false,
+    "artist": {
+     "id": 5080,
+     "name": "Vários intérpretes",
+     "link": "https://www.deezer.com/artist/5080",
+     "picture": "https://api.deezer.com/artist/5080/image",
+     "picture_small": "https://cdn-images.dzcdn.net/images/artist/6d6503360e6cc202c9a1ed8617f3296b/56x56-000000-80-0-0.jpg",
+     "picture_medium": "https://cdn-images.dzcdn.net/images/artist/6d6503360e6cc202c9a1ed8617f3296b/250x250-000000-80-0-0.jpg",
+     "picture_big": "https://cdn-images.dzcdn.net/images/artist/6d6503360e6cc202c9a1ed8617f3296b/500x500-000000-80-0-0.jpg",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/6d6503360e6cc202c9a1ed8617f3296b/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/artist/5080/top?limit=50",
+     "type": "artist"
+    },
+    "type": "album"
+   }
+  ],
+  "total": 2
+ }
+}

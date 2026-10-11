@@ -1,0 +1,51 @@
+{
+ "url": "https://itunes.apple.com/search?term=a%20garden%20of%20black%20flowers%20astrophil%20%26%20stella&entity=album&limit=10",
+ "status": 200,
+ "corpo": {
+  "resultCount": 2,
+  "results": [
+   {
+    "wrapperType": "collection",
+    "collectionType": "Album",
+    "artistId": 1798948121,
+    "collectionId": 1803834218,
+    "artistName": "astrophil & stella, Johanna Bartz, Anna Danilevskaia, Giovanna Baviera & Claire Piganiol",
+    "collectionName": "A Garden of Black Flowers",
+    "collectionCensoredName": "A Garden of Black Flowers",
+    "artistViewUrl": "https://music.apple.com/us/artist/astrophil-stella/1798948121?uo=4",
+    "collectionViewUrl": "https://music.apple.com/us/album/a-garden-of-black-flowers/1803834218?uo=4",
+    "artworkUrl60": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/25/5c/b3/255cb371-06f4-bd60-af35-c506aed90b64/199199174446.jpg/60x60bb.jpg",
+    "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/25/5c/b3/255cb371-06f4-bd60-af35-c506aed90b64/199199174446.jpg/100x100bb.jpg",
+    "collectionPrice": 9.99,
+    "collectionExplicitness": "notExplicit",
+    "trackCount": 14,
+    "copyright": "℗ 2025 Albus Fair Editions",
+    "country": "USA",
+    "currency": "USD",
+    "releaseDate": "2025-04-04T07:00:00Z",
+    "primaryGenreName": "Classical"
+   },
+   {
+    "wrapperType": "collection",
+    "collectionType": "Album",
+    "artistId": 252035493,
+    "collectionId": 1825880250,
+    "artistName": "Patrick Ayrton, Louise Ayrton & Lauren Lodge-Campbell",
+    "collectionName": "Astrophil & Stella",
+    "collectionCensoredName": "Astrophil & Stella",
+    "artistViewUrl": "https://music.apple.com/us/artist/patrick-ayrton/252035493?uo=4",
+    "collectionViewUrl": "https://music.apple.com/us/album/astrophil-stella/1825880250?uo=4",
+    "artworkUrl60": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/e1/bd/9a/e1bd9a6e-fe0f-2dba-e1f9-1c9aa5e897e1/5060140212690.jpg/60x60bb.jpg",
+    "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/e1/bd/9a/e1bd9a6e-fe0f-2dba-e1f9-1c9aa5e897e1/5060140212690.jpg/100x100bb.jpg",
+    "collectionPrice": 9.99,
+    "collectionExplicitness": "notExplicit",
+    "trackCount": 16,
+    "copyright": "℗ 2025 VOCES8 Records",
+    "country": "USA",
+    "currency": "USD",
+    "releaseDate": "2025-09-05T07:00:00Z",
+    "primaryGenreName": "Classical"
+   }
+  ]
+ }
+}

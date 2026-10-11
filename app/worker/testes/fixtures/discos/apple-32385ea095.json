@@ -1,0 +1,8 @@
+{
+ "url": "https://itunes.apple.com/search?term=a%20garden%20of%20black%20flowers%20Hilliard%20Ensemble&entity=album&limit=10",
+ "status": 200,
+ "corpo": {
+  "resultCount": 0,
+  "results": []
+ }
+}

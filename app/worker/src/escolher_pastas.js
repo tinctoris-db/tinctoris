@@ -158,7 +158,7 @@ for (const { p, fica, sai, pastaFica, pastaSai, comuns, soSai } of passos) {
       for (const k of ['sigla', 'cota', 'arquivo', 'local_arquivo']) delete md[k]
       md.nota_revisao = [md.nota_revisao, p.nota].filter(Boolean).join('\n')
       await pb.collection('fontes').update(sai.id, { titulo: p.titulo, hash: r.hash, paginas: r.paginas, estado: 'a_rever', metadados: md })
-      await servico('reorganizar', { id: sai.id }).catch((e) => console.log(`   (nome do ficheiro não atualizado: ${e.message})`))
+      await servico('reorganizar', { id: sai.id }).catch((e) => console.log(`   (nome do ficheiro não actualizado: ${e.message})`))
       console.log(`${num(p.sai)}: FEITO — ${r.paginas} imagens de outras fontes em ${relativo(nova)}; ${comuns.length} repetidas em ${relativo(repetidas)}`)
     }
   } catch (e) {

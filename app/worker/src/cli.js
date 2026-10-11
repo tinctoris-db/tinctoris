@@ -59,7 +59,7 @@ const AJUDA = `Comandos:
   rever-catalogos [opções]     confirma os nºs de catálogo lidos pela IA (pelo nome do ficheiro,
                                texto ou IMSLP); corrige-os ou passa-os a sugestão; repõe títulos
       --limite 20 / --aplicar  como em titulos-obras
-  lotes-midi [opções]          junta numa ficha cada lote de MIDI numerados de uma coleção
+  lotes-midi [opções]          junta numa ficha cada lote de MIDI numerados de uma colecção
                                ("rossi_1608_1.mid", "_2"…) e procura o livro (biblioteca/RISM)
       --excluir a,b            deixa estes lotes como estão (nomes como aparecem na lista)
       --aplicar                grava (faz cópia de segurança antes); sem esta opção só mostra
@@ -69,13 +69,13 @@ const AJUDA = `Comandos:
                                título = nome original do ficheiro, e o ficheiro é renomeado
   reler-rism [--aplicar]       fichas identificadas no RISM sem impressor/editor: relê o registo e
                                preenche o impressor (e o local, se faltar); nunca apaga nada
-  reler-imslp [--aplicar]      fichas identificadas no IMSLP: lê a página da obra (coleção ou obra,
+  reler-imslp [--aplicar]      fichas identificadas no IMSLP: lê a página da obra (colecção ou obra,
                                impressor tomado por compositor, edição do exemplar); só preenche o que falta
-  duplicados [--aplicar]       procura PDFs quase iguais (mesmo aspeto página a página, bytes diferentes);
+  duplicados [--aplicar]       procura PDFs quase iguais (mesmo aspecto página a página, bytes diferentes);
                                com --aplicar, junta as cópias certas (fica a ficha mais completa, o ficheiro
                                repetido vai para biblioteca/_duplicados); os duvidosos ficam no ecrã «Duplicados»
   rever-colecoes [--aplicar]   PDFs com título de uma peça ("Sonata I") e 30+ páginas, lidos pela IA ou
-                               pelo IMSLP: reanalisa-os (provável coleção sem frontispício)
+                               pelo IMSLP: reanalisa-os (provável colecção sem frontispício)
   titulos-rism [--aplicar]     tira dos títulos vindos do RISM o impressor entre [ ] no fim
   reconstruir-imagens [--aplicar] [--excluir 15791,15805]  fontes fotografadas página a página que a versão antiga partiu (uma ficha
                                por página, PDFs parciais): mostra o plano; com --aplicar, liga os originais
@@ -283,12 +283,12 @@ async function main() {
       }
       conta.mudadas++
       if (alt.autores) conta.impressor++
-      if (alt.metadados?.conteudo_tipo === 'Coleção' && f.metadados?.conteudo_tipo !== 'Coleção') conta.colecao++
+      if (alt.metadados?.conteudo_tipo === 'Colecção' && f.metadados?.conteudo_tipo !== 'Colecção') conta.colecao++
       if (alt.editora || alt.local) conta.edicao++
       const mostrar = [alt.metadados?.conteudo_tipo !== f.metadados?.conteudo_tipo && alt.metadados?.conteudo_tipo, alt.editora && `impressor: ${alt.editora}`, alt.local && `local: ${alt.local}`, alt.data && `data: ${alt.data}`, ...notas].filter(Boolean)
       console.log(`#${String(f.numero).padStart(5, '0')}  ${f.titulo.slice(0, 55).padEnd(55)}  → ${mostrar.join('; ')}`)
     }
-    return console.log(`\n${conta.vistas} fichas vistas: ${conta.mudadas} ${opcoes.aplicar ? 'alteradas' : 'a alterar (simulação; --aplicar para gravar)'} — ${conta.colecao} coleções, ${conta.impressor} com o impressor tirado dos compositores, ${conta.edicao} com impressor/local da edição; ${conta.falhas} falhas de ligação${opcoes.aplicar ? `, ${conta.saltadas} saltadas` : ''}.`)
+    return console.log(`\n${conta.vistas} fichas vistas: ${conta.mudadas} ${opcoes.aplicar ? 'alteradas' : 'a alterar (simulação; --aplicar para gravar)'} — ${conta.colecao} colecções, ${conta.impressor} com o impressor tirado dos compositores, ${conta.edicao} com impressor/local da edição; ${conta.falhas} falhas de ligação${opcoes.aplicar ? `, ${conta.saltadas} saltadas` : ''}.`)
   }
 
   if (comando === 'rever-colecoes') {

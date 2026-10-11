@@ -37,7 +37,7 @@ janela do Terminal (deixe-a aberta) e a biblioteca aparece no navegador em
 <http://127.0.0.1:8090>.
 
 **Parar:** feche essa janela do Terminal (ou carregue `Ctrl+C` nela).
-**Pare sempre a biblioteca antes de ejetar o disco.**
+**Pare sempre a biblioteca antes de ejectar o disco.**
 
 Enquanto a biblioteca está a correr, o Mac não adormece (o ecrã pode apagar-se),
 para o tratamento de muitos ficheiros não parar a meio.
@@ -51,7 +51,7 @@ palavra-passe). A conta fica só neste disco e impede que outras pessoas na rede
 Wi-Fi abram a biblioteca. Por segurança, só pode ser criada no próprio Mac onde
 o disco está ligado.
 
-**Neste Mac não é preciso entrar:** a biblioteca abre diretamente com a sua conta. O
+**Neste Mac não é preciso entrar:** a biblioteca abre directamente com a sua conta. O
 ecrã de entrada só aparece nos outros aparelhos (iPad, telemóvel), para que ninguém na
 mesma rede Wi-Fi a possa abrir.
 
@@ -84,7 +84,7 @@ biblioteca:
    duplicada, tolerando gralhas no título.
 5. **Se não existir, procura os metadados online**:
    - teses: primeiro o OpenAIRE (que inclui o RCAAP e o RIA da Universidade
-     de Aveiro) e o **RECIPP** (repositório do Politécnico do Porto, com as teses da
+     de Aveiro) e o **RECIPP** (repositório institucional, com as teses da
      ESMAE: dá também a instituição e o orientador);
    - outros escritos: CrossRef, OpenAlex, Open Library, OpenAIRE, **Google Books** e
      RECIPP. O Google Scholar e o JSTOR não permitem pesquisa automática: ficam as
@@ -130,7 +130,7 @@ que lá largou são apagadas quando ficam vazias.
 
 A IA local diz também se a página é **manuscrita ou impressa**. Depois:
 - **com sigla + cota**, o manuscrito é procurado pela cota no RISM e no DIAMM
-  (identificação quase exata: datação, suporte, dimensões, notação);
+  (identificação quase exacta: datação, suporte, dimensões, notação);
 - **impressos**: o RISM é consultado pelo ano, compositor e título na fonte; quando
   encontra, preenche o **nº RISM** (A/I ou B/I, ex.: `RISM B/I 1538/4`), o
   impressor, o local, o título uniformizado e os exemplares conhecidos;
@@ -156,9 +156,9 @@ A IA local diz também se a página é **manuscrita ou impressa**. Depois:
   notícia, e só aceita um resultado único (o ano é o da edição, não o da morte do autor; se
   o título estiver estragado, tenta só o autor e o ano, ou, num registo sem data no
   catálogo, o mesmo título e o mesmo fundo); nos PDFs antigos da **BSB** que só trazem a cota
-  («4 Mus.pr. 109#Beibd.3»), encontra a digitalização pela cota exata (através da Europeana).
+  («4 Mus.pr. 109#Beibd.3»), encontra a digitalização pela cota exacta (através da Europeana).
 - **registo do exemplar no catálogo** (por agora, Gallica/BnF, BSB e BNP/purl.pt): com o
-  identificador, a app vai buscar o registo exato do exemplar: título, autores,
+  identificador, a app vai buscar o registo exacto do exemplar: título, autores,
   imprenta, a **proveniência** (antigos possuidores, quando o catálogo a tem), a
   ligação para o registo no catálogo e os **outros exemplares** da mesma edição
   nessa biblioteca. Se o RISM tiver várias edições parecidas (ex.: o 1.º e o 2.º
@@ -183,7 +183,7 @@ A IA local diz também se a página é **manuscrita ou impressa**. Depois:
 - **bases de compositores** (por agora, o **Bach digital**): numa partitura ou num
   manuscrito com número de catálogo (BWV), o campo «Fontes conhecidas da obra» lista
   todas as fontes que a base conhece dessa obra: arquivo e cota, autógrafo ou cópia,
-  datação, em português (ex.: `D-B Am.B 51 — manuscrito coletivo, cópia, 2.ª metade do
+  datação, em português (ex.: `D-B Am.B 51 — manuscrito colectivo, cópia, 2.ª metade do
   séc. XVIII (c. 1760–1789)`). Num manuscrito com sigla + cota que esteja no Bach digital, vêm o copista,
   a datação, as dimensões e a **cadeia de possuidores** (proveniência). Outras bases de
   compositores entram da mesma maneira (uma entrada nova em `compositores.js`).
@@ -210,7 +210,7 @@ buscar ao **IMSLP** o título normalizado, em inglês: "SONATA IV" + "BWV 528, 2
 fonte"; a tonalidade, a data de composição e a ligação à obra no IMSLP também são
 guardadas. Por prudência, o título **não** muda quando: o título da ficha tem outro
 número de catálogo, outra tonalidade, outro número de obra ("No. 6" ≠ "No.2"), é de
-outro género, é um andamento de dança que não existe na obra, ou é uma coleção.
+outro género, é um andamento de dança que não existe na obra, ou é uma colecção.
 Para as fichas antigas: `./biblioteca titulos-obras` mostra o que mudaria;
 `./biblioteca titulos-obras --aplicar` grava (com cópia de segurança antes).
 
@@ -256,17 +256,94 @@ originais ficam guardadas em `nao_processados/imagens_juntadas/`.
 - **Trabalho interrompido:** se a biblioteca for fechada a meio de uma reanálise,
   as fontes que ficaram «A processar» voltam para a fila no arranque seguinte.
   Os ficheiros novos da `watch_folder` e as fichas reanalisadas à mão (botão
-  **Reanalisar**) passam sempre à frente dessas reanálises. Em **Atividade** o
+  **Reanalisar**) passam sempre à frente dessas reanálises. Em **Actividade** o
   cartão mostra os dois números: "Novos" e "Reanálise".
 - **Ritmo das pesquisas online:** os serviços online não são sobrecarregados. Se
   um deles recusar pedidos, fica em pausa 10 minutos.
 
+### Livros em papel e discos: fotografar o ISBN ou o código de barras
+Para acrescentar um livro que tem (ou consultou) em papel, sem escrever a ficha:
+fotografe com o telemóvel o **código de barras** da contracapa e/ou a **ficha
+técnica** (a página com o ISBN, a editora e o ano) e largue as fotografias
+**soltas** na `watch_folder` (não dentro de uma subpasta). A biblioteca:
+
+1. **Lê cada fotografia no próprio Mac** (com as ferramentas da Apple: nada sai do
+   computador): o código de barras e o texto. Uma fotografia com um ISBN é tratada
+   como um livro em papel; as outras seguem o caminho de sempre. As fotografias do
+   mesmo livro (código de barras e ficha técnica) fazem uma só ficha.
+2. **Procura o livro pelo ISBN:** Open Library, Google Books (com a chave das
+   Definições) e o catálogo das bibliotecas alemãs (K10plus, que também tem teses).
+3. **Lê a ficha técnica** («Título», «Autor», «Tradução», «Editor», «1.ª edição»,
+   «© Nome, Cidade 2019»…) e, se for preciso, pede ajuda à IA local.
+4. **Faz a ficha sem ficheiro**, com a etiqueta **«Em papel»**:
+   - se um catálogo encontrou o livro, a ficha fica **completa** e as fotografias
+     vão para o **Lixo do Mac** (pasta «Fotografias de ISBN» com a data; pode
+     recuperá-las até esvaziar o Lixo);
+   - se só a fotografia deu os dados (ex.: livros portugueses que só estão na
+     PORBASE), a ficha fica **por rever** e as fotografias ficam ligadas a ela
+     (secção «Fotografias originais»), para conferir;
+   - se já existe uma ficha com esse ISBN (por exemplo, o PDF do mesmo livro), não
+     se faz outra: essa ficha ganha a etiqueta «Em papel» e os campos que lhe
+     faltavam.
+   - se nem o catálogo nem a fotografia dizem o título, as fotografias vão para
+     `nao_processados/referencias_por_identificar/`.
+
+Na ficha, o campo **«Onde está o exemplar físico»** fica em branco para o
+escrever (em casa, numa biblioteca, emprestado por alguém…). O programa nunca o
+preenche nem o muda, e ele não vai para a cópia de leitura.
+
+**Discos (CD, LP…).** O mesmo para os discos que tem: fotografe a **contracapa
+com o código de barras** e largue a fotografia solta na `watch_folder`; um código
+de barras que não é de um livro é tratado como um disco. Para discos sem código de
+barras, ou para juntar várias fotografias do mesmo disco, use a pasta
+**`watch_folder/Discos`** (criada pela biblioteca ao arrancar): ali, **todas** as
+imagens são discos.
+- Fotografias **soltas** em `Discos`: cada uma é identificada à parte e as que
+  forem do mesmo disco (o mesmo código de barras, ou o mesmo disco no catálogo)
+  fazem uma só ficha.
+- Uma **subpasta** `Discos/<nome do disco>/` é sempre **um** disco (capa,
+  contracapa, livrete…); o nome da pasta serve de título se nada mais o disser.
+
+A biblioteca procura o disco pelo código de barras (Apple Music, Deezer,
+MusicBrainz); sem código, ou se nenhum catálogo o conhecer, a IA local lê a capa
+(título, intérpretes, editora, nº de catálogo como «NUM 1212») e procura pelo
+título e intérprete. A ficha é do tipo **«Disco»**, sem ficheiro, com a etiqueta
+**«Exemplar físico»**, o código de barras, o nº de catálogo e as faixas:
+- se um catálogo encontrou o disco **pelo código de barras** e deu o título, o
+  intérprete e a data, fica **completa** e as fotografias vão para o **Lixo do Mac**
+  (pasta «Fotografias de discos» com a data);
+- se o disco só foi encontrado **pelo título e intérprete** (lidos na capa), os dados
+  do catálogo preenchem a ficha, mas ela só fica **completa** se a fotografia
+  confirmar a edição com um dado independente: o ano do ℗/© (tolerância de 1 ano), o
+  nº de catálogo ou a editora (a gravadora; o nome dos próprios intérpretes não
+  conta). Senão fica **por rever**, com uma nota a dizer o que confirmar;
+- se o código de barras da fotografia for diferente do da edição encontrada pelo
+  texto, fica o da fotografia e a ficha fica **por rever**;
+- em todos os casos por rever, as fotografias ficam ligadas à ficha (secção
+  «Fotografias originais») para conferir;
+- se já há uma ficha com esse código de barras, não se faz outra: ganha a etiqueta
+  e os campos que lhe faltavam;
+- sem título legível, as fotografias vão para
+  `nao_processados/referencias_por_identificar/` (um título cortado na borda da
+  fotografia não é usado).
+
+A biblioteca nunca apaga a pasta `watch_folder/Discos`.
+
+Se o código de barras não for lido mas os algarismos estiverem na fotografia (ex.:
+«417513 105223», sem o primeiro algarismo), a biblioteca reconstrói o código, mas
+só o usa se um catálogo o confirmar e o disco bater com o que está escrito.
+
+Limites: livros sem ISBN (antes de ~1970) não são reconhecidos assim; uma
+fotografia da capa sem ISBN segue o caminho das outras imagens. Um livro
+fotografado página a página (muitas fotografias com o mesmo nome) é juntado num
+PDF como antes, mesmo que uma das páginas tenha o ISBN.
+
 ### b) Importar do Mendeley ou do Zotero
-No menu, **Importar (Mendeley, Zotero)** → **Escolher ficheiro…** e indique o
+No menu, **Importar** → **Escolher ficheiro…** e indique o
 ficheiro `.bib` (ou `.ris`). Primeiro aparece um **resumo**, e nada é gravado
 até carregar em «Importar»:
 
-- **Repetições** (dentro do ficheiro ou já na biblioteca) são detetadas e
+- **Repetições** (dentro do ficheiro ou já na biblioteca) são detectadas e
   ignoradas. O que só existia numa repetição (por exemplo o DOI ou o ano) é
   aproveitado.
 - **Tipos mal classificados** pelo Mendeley são corrigidos quando é evidente
@@ -285,12 +362,12 @@ até carregar em «Importar»:
   as **pastas** do Mendeley passam a etiquetas; e os **PDFs anexados**, se
   existirem neste computador, são copiados para a biblioteca.
 
-> O Mendeley Reference Manager (versão atual) não inclui PDFs, anotações nem
+> O Mendeley Reference Manager (versão actual) não inclui PDFs, anotações nem
 > pastas no ficheiro .bib: só os dados bibliográficos. Os PDFs podem depois ser
 > largados na watch_folder.
 
 ### c) À mão
-Clique em **+ Nova fonte**. Útil para instrumentos, espetáculos, fontes sem
+Clique em **+ Nova fonte**. Útil para instrumentos, espectáculos, fontes sem
 ficheiro, ou para registar algo rapidamente.
 
 ## 3. Rever fontes («Por rever»)
@@ -327,10 +404,10 @@ RISM, no IMSLP, no Cantus, na BNP, na Europeana e no Internet Archive.
 
 ### Duplicados (PDFs quase iguais)
 
-Os ficheiros **exatamente iguais** nunca chegam a ter ficha: vão logo para
+Os ficheiros **exactamente iguais** nunca chegam a ter ficha: vão logo para
 `_duplicados`. Os **quase iguais** (o mesmo PDF gravado de novo, com outro nome, uma
 capa ou uma página em branco a mais) são procurados pelo comando
-`./biblioteca duplicados`, que compara o aspeto das páginas (1.ª, 2.ª, 3.ª, do meio e
+`./biblioteca duplicados`, que compara o aspecto das páginas (1.ª, 2.ª, 3.ª, do meio e
 últimas, e depois em alta resolução, para não confundir partes diferentes da mesma peça):
 
 - **Cópias certas** (mesmo nº de páginas, todas as páginas comparadas iguais):
@@ -349,20 +426,32 @@ espaço das fontes, aparece um aviso no topo da página. No ecrã **Duplicados**
 «Espaço ocupado pelos duplicados»:
 - **Verificar agora** compara o conteúdo de cada ficheiro de `_duplicados` com a biblioteca
   (a primeira vez demora alguns minutos).
-- **Seguros** (têm uma cópia exatamente igual numa ficha ou em `_originais`, ou são PDFs
-  quase iguais já juntados): **Pôr no Lixo do Mac**. Cada um é confirmado outra vez antes
+- **Seguros** (têm uma cópia exactamente igual numa ficha ou em `_originais`, são PDFs
+  quase iguais já juntados, ou têm as páginas iguais às da ficha com que foram confundidos):
+  **Pôr no Lixo do Mac**. Cada um é confirmado outra vez antes
   de sair; ficam no Lixo numa pasta «Duplicados AAAA-MM-DD …» e podem ser recuperados até
   esvaziar o Lixo. Nada é apagado de vez pela biblioteca.
-- **Por ver** (sem cópia igual): lista com os **maiores primeiro**; para cada um, **Abrir**,
+- **Por ver** (sem cópia igual): lista com os **maiores primeiro**. Cada linha diz porque o
+  ficheiro foi posto de parte e com que ficha foi confundido, e o resultado da comparação das
+  páginas (filtros: «Páginas diferentes», «Muito parecidos», «Sem comparação possível», «Sem
+  ficha conhecida»). **Comparar** mostra lado a lado a mesma página dos dois ficheiros (◀ ▶
+  para mudar de página), com **Ver ficha** e **Abrir o ficheiro da ficha**. Depois: **Abrir**,
   **Mostrar no Finder**, **Pôr no Lixo**, **Devolver à biblioteca** (volta à watch folder e
   fica com ficha própria) ou **Manter**.
+
+**Outra cópia da mesma obra.** Um ficheiro novo identificado como a mesma obra de uma ficha
+que já tem ficheiro só vai para `_duplicados` se as páginas forem iguais. Se forem muito
+parecidas, o par aparece em **Pares por decidir**; se forem diferentes (outra edição, uma
+parte separada, ou uma identificação errada), fica com ficha própria, por rever, com uma nota.
+(Até 4/10/2026 bastava a identificação: `node src/rever_outras_copias.js` lista esses ficheiros
+e, com `--aplicar`, devolve à watch folder os que têm páginas diferentes.)
 
 ## 4. Notas de leitura
 
 Na ficha de cada fonte, secção **Notas de leitura** → **+ Nova nota**. Cada nota tem:
 
 - **Localização:** página, fólio (`fól. 3v`) ou minutagem (`12:30`);
-- **Tipo:** Citação, Paráfrase, Comentário, Ideia ou Pergunta;
+- **Tipo:** Citação, Paráfrase, Comentário, Idéia ou Pergunta;
 - **Texto**, **etiquetas** e **contexto/UC**.
 
 A página **Notas de leitura** reúne as notas de todas as fontes, com pesquisa e
@@ -374,7 +463,7 @@ Obsidian ou no Notion.
 
 Cada fonte tem um **número permanente** (#0001, #0002…), que nunca muda nem se
 repete. Aparece na lista e na ficha. Escreva **#123** na pesquisa para ir
-diretamente a essa fonte. Serve também para etiquetar exemplares físicos ou para
+directamente a essa fonte. Serve também para etiquetar exemplares físicos ou para
 citar a fonte nas suas notas.
 
 
@@ -384,7 +473,7 @@ dos documentos (incluindo o texto obtido por OCR).
 
 - Acentos e maiúsculas são ignorados: `evora` encontra «Évora».
 - Palavras incompletas também servem: `polif` encontra «polifonia».
-- Para uma expressão exata, use aspas: `"basso continuo"`.
+- Para uma expressão exacta, use aspas: `"basso continuo"`.
 - O botão **Filtros** permite filtrar por autor, título, tipo, contexto/UC,
   natureza (primária/secundária), estado, intervalo de anos e etiqueta.
 - **Ordenar por**, por cima da lista: mais recentes, título, autor (pelo
@@ -394,10 +483,27 @@ dos documentos (incluindo o texto obtido por OCR).
   fontes sem autor ou sem data ficam sempre no fim. A última ordem escolhida
   fica memorizada.
 
+### Editar várias fichas de uma vez
+Seleccione as fichas (a caixa à esquerda de cada uma, ou **Seleccionar as
+visíveis**, que marca **todas** as que o filtro mostra, não só as do ecrã) e
+carregue em **Editar as seleccionadas…**. O painel mostra só os campos que todas
+têm: os gerais (editora, local, data, natureza), os do tipo que todas partilham
+(ex.: «Onde está o exemplar físico» nos livros e discos) e as etiquetas e contextos.
+
+- Escreva só o que quer mudar; os campos em branco ficam como estão.
+- Em cada campo escolha **só onde está vazio** (não mexe no que já está escrito)
+  ou **substituir em todas**. Nas etiquetas e contextos: **acrescentar** ou
+  **retirar** um, sem mexer nos outros. Nunca se esvazia um campo.
+- Antes de gravar mostra o que vai mudar; com 50 fichas ou mais pede para
+  escrever o número. Faz uma cópia de segurança da base, salta as fichas «A
+  processar» e deixa a lista do que mudou em `app/registos/editar-fontes-<data>.txt`.
+  Se mudar um campo que entra no nome do ficheiro (data, editora…), o ficheiro é
+  renomeado. Título e autores mudam-se ficha a ficha.
+
 ## 6. Exportar bibliografias
 
-Em **Fontes**, selecione as fontes (ou não selecione nenhuma para exportar todas
-as da pesquisa atual) e carregue em **Exportar bibliografia**. Escolha:
+Em **Fontes**, seleccione as fontes (ou não seleccione nenhuma para exportar todas
+as da pesquisa actual) e carregue em **Exportar bibliografia**. Escolha:
 
 - **Estilo:**
   - APA 7;
@@ -436,11 +542,11 @@ registo de ensaio, disco, instrumento histórico, tecnologia, base de dados, etc
 - **Campos:** cada campo tem um nome, o tipo de valor (texto, número, data,
   lista de opções…) e, opcionalmente, a correspondência na citação (por exemplo,
   «Cota» → Cota; «Revista» → Publicado em).
-- Também pode criar um campo **diretamente na ficha de uma fonte** (**+ Novo
+- Também pode criar um campo **directamente na ficha de uma fonte** (**+ Novo
   campo**), só para essa fonte ou para todas as do mesmo tipo.
 
 O campo **Contexto / UC** (Leitura e Interpretação de Fontes, Pesquisa Avançada
-em Música, Projeto Artístico e Tese, Ensino, Produção artística) existe em todas
+em Música, Projecto Artístico e Tese, Ensino, Produção artística) existe em todas
 as fontes e notas, e serve para filtrar por finalidade.
 
 ## 8. Usar no iPad, telemóvel ou outro computador
@@ -448,13 +554,17 @@ as fontes e notas, e serve para filtrar por finalidade.
 Instalado com o guia de instalação, o TINCTORIS **só abre no próprio Mac**. Para o usar noutros aparelhos:
 **Definições** → «A sua biblioteca» → desligar «Abrir só neste Mac» e voltar a abrir o TINCTORIS.
 
-Com o acesso pela rede ligado e a biblioteca a correr, abra **Atividade**: lá aparece o endereço para a rede
+Com o acesso pela rede ligado e a biblioteca a correr, abra **Actividade**: lá aparece o endereço para a rede
 de casa (por exemplo `http://192.168.1.69:8090`). Abra-o no navegador de
 qualquer dispositivo ligado à **mesma rede Wi-Fi** e entre com a sua conta. A
 biblioteca não fica acessível a partir da internet.
 
 ## 9. Definições
 
+- **Idioma da interface:** português ou inglês (*English*). Muda logo, sem guardar, e fica para os outros aparelhos
+  que abrem a mesma biblioteca. Na primeira vez, o TINCTORIS segue o idioma do Mac. Também se escolhe nas
+  boas-vindas e no ecrã de entrada. Só muda a interface: as fichas, as notas, os nomes dos ficheiros e as mensagens
+  do serviço de fundo (página Actividade) ficam como estão.
 - **O seu nome:** o dono da biblioteca. Num PDF que digitalizou não é o autor; numa transcrição feita num editor de
   partituras é o editor. Várias formas do nome: separe-as com «;».
 - **Padrão do nome do ficheiro:** por omissão `{data}_{AUTOR}_{Titulo}`. Também
@@ -478,12 +588,13 @@ biblioteca não fica acessível a partir da internet.
   - **Google Books:** sem chave, a quota partilhada está quase sempre esgotada, e o
     Google Books só entra na «Pesquisa aprofundada»; com chave, também na pesquisa
     automática dos livros. Para a obter: entrar em <https://console.cloud.google.com>
-    com uma conta Google, criar um projeto, ativar a «Books API» (em «APIs e serviços»)
+    com uma conta Google, criar um projecto, activar a «Books API» (em «APIs e serviços»)
     e, em «Credenciais», carregar em «Criar credenciais» → «Chave de API». Copiar a
     chave para **Definições → Chave Google Books**.
 
-A página **Acerca e ajuda** (último item do menu) mostra a versão, a licença, a ligação ao código-fonte, como citar o
-TINCTORIS (pronto a copiar), as ligações para os manuais e guias, o botão «Enviar comentário» e os créditos.
+A página **Acerca** (último item do menu) mostra a versão, a licença, a ligação ao código-fonte, como citar o
+TINCTORIS (pronto a copiar) e os créditos. A página **Ajuda** (o item anterior) tem as ligações para os manuais e guias e o
+botão «Enviar comentário».
 
 ## 10. Cópias de segurança
 
@@ -510,7 +621,7 @@ ligado e desligado com a biblioteca.
   lido existir mesmo na página, a fonte fica completa; senão, fica «por rever»
   com os dados já preenchidos.
 - Liga-se e desliga-se em **Definições → IA local**. O estado aparece em
-  **Atividade**.
+  **Actividade**.
 
 ## 12. Comandos de terminal (opcional)
 
@@ -539,7 +650,7 @@ a correr.
 |---|---|
 | A página não abre | Se o TINCTORIS está num disco externo, confirme que está ligado; depois faça duplo clique em `Iniciar TINCTORIS.command`. |
 | «O serviço de fundo não está a responder» | Feche a janela do Terminal e volte a iniciar. |
-| Um ficheiro ficou na watch_folder | Veja o erro em **Atividade → Registo**. Os registos completos estão em `app/registos/`. |
+| Um ficheiro ficou na watch_folder | Veja o erro em **Actividade → Registo**. Os registos completos estão em `app/registos/`. |
 | A pesquisa não encontra algo que existe | **Definições → Reconstruir índice de pesquisa**. |
 | Ficheiros em `biblioteca/` sem ficha (por exemplo, depois de restaurar uma cópia) | **Definições → Reler os ficheiros da biblioteca**. |
 | A base de dados deu erro | Pare a biblioteca e restaure a última cópia em **Definições → Painel de administração → Settings → Backups**. |
@@ -550,7 +661,7 @@ a correr.
 ## Notas técnicas
 
 - **Motor:** PocketBase (SQLite + API REST, binário único, em `app/bin`),
-  servido em `0.0.0.0:8090`. Todas as coleções exigem sessão de superutilizador.
+  servido em `0.0.0.0:8090`. Todas as colecções exigem sessão de superutilizador.
 - **Esquema** (`app/pb_migrations`):
   - `tipos_fonte`: definição dos campos em JSON;
   - `fontes`: campos comuns em colunas, campos específicos em `metadados` (JSON);
@@ -570,7 +681,7 @@ a correr.
   | `src/pb.js` | base de dados |
   | `src/index.js`, `src/processador.js` | monitorização da watch folder |
   | `src/ficheiros.js` | organização e nomes dos ficheiros |
-  | `src/extracao.js` | extração de texto e identificadores |
+  | `src/extracao.js` | extracção de texto e identificadores |
   | `src/fontes_externas/` | enriquecimento de metadados (bibliográficas, académicas, audiovisuais; `musicologicas.js`: RISM e DIAMM, e a ordem das fontes antigas) |
   | `src/fontes_externas/bibliotecas_digitais.js` | bibliotecas reconhecidas pela folha inicial do PDF (sigla, sinal, identificador, ligação); para acrescentar uma biblioteca, uma linha nova |
   | `src/fontes_externas/gallica.js`, `bsb.js` | registo do exemplar (Gallica + catálogo da BnF em UNIMARC; BSB: manifesto IIIF + MARC21) e pesquisa na Gallica (SRU) |
@@ -588,11 +699,31 @@ a correr.
 
 - **IA local:** `src/ia.js` (Ollama em `127.0.0.1:11434`, modelo em
   `app/modelos`, ligado pelo `iniciar.sh`).
+- **Livros em papel (fotografias do ISBN):** `src/referencias.js`, chamado por
+  `juntar.js` antes de agrupar as imagens soltas da raiz da `watch_folder`. O leitor
+  `worker/ferramentas/ler_imagem.swift` (Vision da Apple: códigos EAN e texto com
+  caixas) é compilado uma vez com `swiftc` para `app/cache/ler-imagem`; sem as
+  Command Line Tools fica o Tesseract (só texto). ISBN no catálogo:
+  `fontes_externas/index.js` → `porIsbn` (Open Library → Google Books → K10plus
+  `k10plusPorIsbn`). Campo `metadados.exemplar_papel` («Onde está o exemplar
+  físico», migrações 1790000053 e 1790000054), nunca escrito pelo programa
+  (protegido em `protegerReanalise`, `juntarFichas` e nos duplicados).
+- **Discos fotografados:** `src/referencias_discos.js`. Na raiz, `separarReferencias`
+  devolve à parte as fotografias com um código de barras de disco (EAN/UPC que não é
+  ISBN, `eanDeDisco`); as imagens de `watch_folder/Discos` (`pastaDoDisco`) nunca
+  passam por `juntarGrupo`. Catálogos em `fontes_externas/discos.js`
+  (`discoPorCodigo`, `discoPorTexto`); IA na capa: `lerCapaDisco` em `ia.js`, só
+  quando nenhum catálogo encontrou o disco. Campo `metadados.codigo_barras` no tipo
+  «Disco» (migração 1790000054); rasto em `metadados.fotografias_disco`.
 - **Leitura de capas:** `src/capa.js` (layout com `pdftotext -bbox-layout` ou
   TSV do Tesseract; partituras, texto cifrado, JSTOR, teses em várias línguas,
   palavras-chave do autor); palavras-chave calculadas em `src/palavras.js`.
 - **Interface:** `app/pb_public`, em HTML, CSS e JavaScript simples, sem passo
   de compilação.
-- **Importação:** `src/importacao.js` (BibTeX/RIS via citation-js; deteção de
+- **Idiomas:** os textos ficam em português no código, dentro de `tr('…')`; `app/pb_public/idiomas/en.json` dá a
+  tradução de cada um (a chave é o texto português exacto; `{n}`, `{titulo}`… são valores). Sem tradução, aparece o
+  português. Os valores guardados na base (tipos, papéis, opções) ficam em português e só se traduzem ao mostrar.
+  Ao acrescentar ou mudar um texto, acrescentar a tradução em `en.json`.
+- **Importação:** `src/importacao.js` (BibTeX/RIS via citation-js; detecção de
   repetições por DOI, ISBN e título compacto com anos compatíveis).
 - **Ainda não incluído:** acesso fora de casa e partilha com outras pessoas.

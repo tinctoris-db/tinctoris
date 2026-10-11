@@ -127,6 +127,24 @@ h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: 
 .botao.pequeno { padding: 3px 9px; font-size: 13px; }
 .botao:disabled { opacity: 0.5; cursor: default; }
 .botao-texto { background: none; border: 0; color: var(--acento); cursor: pointer; padding: 0; font-size: 14px; }
+.botao-texto.perigo { color: var(--erro); }
+
+/* Escolha de vários valores num filtro (ex.: «Formato do ficheiro») */
+.escolha-multipla { position: relative; }
+.escolha-multipla > summary {
+  list-style: none; cursor: pointer; border: 1px solid var(--linha); background: var(--superficie); border-radius: 8px;
+  padding: 8px 28px 8px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative;
+}
+.escolha-multipla > summary::-webkit-details-marker { display: none; }
+.escolha-multipla > summary::after { content: '▾'; position: absolute; right: 10px; color: var(--tinta-3); }
+.escolha-multipla[open] > summary { border-color: var(--tinta-3); box-shadow: var(--foco); }
+.escolha-multipla .opcoes {
+  position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; min-width: 100%; width: max-content; max-width: 340px;
+  background: var(--superficie); border: 1px solid var(--linha); border-radius: 8px; box-shadow: var(--sombra); padding: 6px 10px 8px;
+}
+.escolha-multipla .opcoes label { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; cursor: pointer; }
+.escolha-multipla .opcoes label .contagem { margin-left: auto; padding-left: 12px; color: var(--tinta-3); font-size: 13px; }
+.escolha-multipla .opcoes .botao-texto { margin-top: 6px; font-size: 13px; }
 
 input[type=text], input[type=email], input[type=password], input[type=search], input[type=number], input[type=url], input[type=date], select, textarea {
   width: 100%; border: 1px solid var(--linha); background: var(--superficie); border-radius: 8px; padding: 8px 10px; outline: none;
@@ -283,3 +301,7 @@ mark { background: var(--marca); color: inherit; font-weight: 600; border-radius
 /* ---------- Acerca e ajuda */
 .citacao-programa { max-width: 72ch; }
 .ligacoes-ajuda { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+
+/* Escolha do idioma (boas-vindas, entrada, Definições) */
+.seletor-idioma { gap: 6px; justify-content: flex-end; margin-bottom: 8px; }
+.caixa > .seletor-idioma { justify-content: flex-start; }

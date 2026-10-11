@@ -87,5 +87,5 @@ for (const { f } of todas) {
     console.log(`${num(f.numero)}: ${e.message}`)
   }
 }
-console.log(`${n} fichas postas a reanalisar (passam à frente da reanálise longa; acompanhe em «Atividade»).`)
+console.log(`${n} fichas postas a reanalisar (passam à frente da reanálise longa; acompanhe em «Actividade»).`)
 process.exit(0)

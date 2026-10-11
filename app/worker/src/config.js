@@ -14,6 +14,8 @@ export const PASTAS = {
   naoProcessados: process.env.NAO_PROCESSADOS_DIR || path.join(RAIZ, 'nao_processados'),
   // (listas de trabalho do serviço, ex.: duplicados por decidir; a cópia de teste usa outra pasta)
   dados: process.env.DADOS_DIR || path.join(APP, 'dados'),
+  // (a pasta de dados do PocketBase: o iniciar.sh usa app/pb_data; a cópia de teste aponta para outra com PB_DADOS_DIR)
+  pbDados: process.env.PB_DADOS_DIR || path.join(APP, 'pb_data'),
   estilos: path.join(APP, 'estilos'),
   tessdata: path.join(APP, 'tessdata'),
 }

@@ -1,0 +1,38 @@
+{
+ "url": "https://api.deezer.com/search/album?q=O%20Ala%C3%BAde%20na%20Pen%C3%ADnsula%20Ib%C3%A9rica%20(s%C3%A9c.%20XV-XXI)%20Segr%C3%A9is%20de%20Lisboa%2C%20Manuel%20Morais&limit=10",
+ "status": 200,
+ "corpo": {
+  "data": [
+   {
+    "id": 407215367,
+    "title": "O Alaúde na Península Ibérica (Séc. XV-XXI)",
+    "link": "https://www.deezer.com/album/407215367",
+    "cover": "https://api.deezer.com/album/407215367/image",
+    "cover_small": "https://cdn-images.dzcdn.net/images/cover/bf7a1a796a6d8a21ed1253687f8d24cb/56x56-000000-80-0-0.jpg",
+    "cover_medium": "https://cdn-images.dzcdn.net/images/cover/bf7a1a796a6d8a21ed1253687f8d24cb/250x250-000000-80-0-0.jpg",
+    "cover_big": "https://cdn-images.dzcdn.net/images/cover/bf7a1a796a6d8a21ed1253687f8d24cb/500x500-000000-80-0-0.jpg",
+    "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bf7a1a796a6d8a21ed1253687f8d24cb/1000x1000-000000-80-0-0.jpg",
+    "md5_image": "bf7a1a796a6d8a21ed1253687f8d24cb",
+    "genre_id": -1,
+    "nb_tracks": 23,
+    "record_type": "album",
+    "tracklist": "https://api.deezer.com/album/407215367/tracks",
+    "explicit_lyrics": false,
+    "artist": {
+     "id": 201578427,
+     "name": "Segréis de Lisboa",
+     "link": "https://www.deezer.com/artist/201578427",
+     "picture": "https://api.deezer.com/artist/201578427/image",
+     "picture_small": "https://cdn-images.dzcdn.net/images/artist/bf7a1a796a6d8a21ed1253687f8d24cb/56x56-000000-80-0-0.jpg",
+     "picture_medium": "https://cdn-images.dzcdn.net/images/artist/bf7a1a796a6d8a21ed1253687f8d24cb/250x250-000000-80-0-0.jpg",
+     "picture_big": "https://cdn-images.dzcdn.net/images/artist/bf7a1a796a6d8a21ed1253687f8d24cb/500x500-000000-80-0-0.jpg",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/bf7a1a796a6d8a21ed1253687f8d24cb/1000x1000-000000-80-0-0.jpg",
+     "tracklist": "https://api.deezer.com/artist/201578427/top?limit=50",
+     "type": "artist"
+    },
+    "type": "album"
+   }
+  ],
+  "total": 1
+ }
+}

@@ -61,7 +61,7 @@ if command -v ollama >/dev/null 2>&1; then
   ollama list 2>/dev/null | grep -q "qwen3-vl:8b-instruct" || { echo "     A descarregar o modelo (~6 GB)..."; ollama pull qwen3-vl:8b-instruct; }
   [[ -n "$OLP" ]] && kill $OLP 2>/dev/null
 else
-  echo "     (desligada: para a ativar, instale o Ollama com 'brew install ollama' e volte a correr este script)"
+  echo "     (desligada: para a activar, instale o Ollama com 'brew install ollama' e volte a correr este script)"
 fi
 
 chmod +x "$APP/iniciar.sh" "$APP/biblioteca" "$APP/../Iniciar TINCTORIS.command" 2>/dev/null || true
