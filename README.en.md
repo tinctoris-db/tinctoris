@@ -64,7 +64,7 @@ video (MP4, MOV…), digital scores (MusicXML, MIDI, Dorico, Sibelius…) and mo
 1. **Checks whether it is a repeat:** if it already exists (same content, any name), it goes to
    `biblioteca/_duplicados`.
 2. **Reads the file**, in this order of confidence:
-   - a JSTOR cover page, from which it takes the DOI;
+   - the **JSTOR cover page**, which is read in full (see "JSTOR cover page" below);
    - the **document's cover**, using the size and position of the lettering (title, author, year; for theses also
      the degree, supervisor and institution). For scans it uses OCR for this;
    - the file name, if it comes from Mendeley ("Author_Year_Title");
@@ -96,12 +96,29 @@ video (MP4, MOV…), digital scores (MusicXML, MIDI, Dorico, Sibelius…) and mo
    They appear in the list under each source; clicking one searches for it.
 7. **Renames and moves the file** into `biblioteca/`, for example `Livro/2003/2003_SUTCLIFFE_The-Keyboard-Sonatas.pdf`.
    If the identification is not certain, the file goes to `_por_rever`.
-8. **Runs OCR** (text recognition), but **only once the source is identified** and **never on scores** (OCR reads
-   text, not notes). This way the Mac is not kept busy for hours with documents still awaiting review. OCR runs in the
-   background, so that you can search inside documents.
+8. **Runs OCR** (text recognition), but **never on scores** (OCR reads text, not notes). It deals first with the
+   sources that are **already identified** (**Complete**). Sources that are **To review** also get OCR, but only when
+   nothing else is left in the incoming queue: it makes use of the idle Mac (at night, for example) and the text becomes
+   searchable even before the record is confirmed. OCR runs in the background, so that you can search inside documents,
+   and it stops while the intensity is set to **Economy** or **Paused** (**Activity** page). The **Redo OCR** button on
+   the record puts that document at the **front** of the queue (also for a source to review). For PDFs of scans whose
+   pages are declared very small (for example 5 × 7 cm with images at 600 ppi), OCR uses a higher resolution (up to
+   1200 dpi), so that the text does not come out empty.
 
 The file is **moved**, not copied: the `watch_folder` is left empty, and the folders you dropped there are removed
 once empty.
+
+**JSTOR cover page.** Articles downloaded from JSTOR begin with a page giving the article's details. The library reads
+it **in full**: title, authors, journal, volume, issue, pages, year, publisher and the stable link
+(`jstor.org/stable/…`, kept in **URL**). When the journal, title and year are read well, the record becomes
+**Complete** (origin «capa do JSTOR») without searching further, because a search by title only brought up other
+articles by the same author. With no author (for example «Editorial», «Back Matter», «Index») it stays **To review**,
+like every record.
+- The **DOI** is only saved if CrossRef confirms that «10.2307/<JSTOR number>» exists and is the same article; the
+  JSTOR number is not, by itself, a DOI.
+- For **reviews** («Review of…», «Reviewed work(s)») the article is the reviewer's, and the book under review goes into
+  the field **Reviewed work** (in Articles) instead of the title or the authors. The record's title is that of the
+  review, or «Review of: …» when it has none of its own.
 
 **Manuscripts and early prints.** The library makes use of the file name:
 - **date at the start**: `1538 …`, `1580-1590 …`, `c1520 …`, `17xx …` (becomes "18th century" and goes into the
@@ -314,7 +331,9 @@ When the library is not sure of the identification (for example, there are sever
 or it is a manuscript with no match online), the source appears under **To review**, with a count in the menu. For
 each one:
 
-- **Pick a suggestion** (**Use this one**). Each suggestion shows where it comes from and a confidence percentage;
+- **Pick a suggestion** (**Use this one**). Each suggestion shows where it comes from and a confidence percentage.
+  **Use this one** fills in the record with the suggestion's data and says «Suggestion applied. Check and confirm.»: you
+  can correct it by hand before saving;
 - or **fill in** the fields by hand;
 - or press **Deep search** to consult *every* source: CrossRef, OpenAlex, Open Library, Google Books, Zenodo, DataCite,
   HAL, Semantic Scholar, Internet Archive, RECIPP, RISM, IMSLP, Gallica, MusicBrainz, Apple Music, Deezer and YouTube.
@@ -395,7 +414,11 @@ the documents' **full text** (including text obtained by OCR).
 - Incomplete words also work: `polif` finds «polifonia».
 - For an exact phrase, use quotation marks: `"basso continuo"`.
 - The **Filters** button filters by author, title, type, context / course unit, nature (primary/secondary), status,
-  range of years and tag.
+  range of years, tag and **file format**.
+- **File format:** opens a list of tick boxes, each format with the number of sources that have it (PDF, Word, RTF, plain
+  text, EPUB, Finale, Sibelius, MIDI, other scores, image, audio, video…). You can tick **several** at once (the sources
+  with any of them appear: PDF **or** Word, for example). **No file** shows the records without a file (made by hand,
+  books on paper, albums…). **Deselect all** clears the choice. It counts the format of the record's main file.
 - **Sort by**, above the list: most recent, title, author (by surname) or date, ascending or descending. A text search
   also offers **Relevance**. The order is that of a catalogue: it ignores capitals, accents and initial articles («The
   Birth of the Orchestra» files under B), and sources without an author or date always go last. The last order chosen
@@ -414,6 +437,22 @@ is** for books and albums) and the tags and contexts.
   the database, skips records that are **Processing** and leaves the list of what changed in
   `app/registos/editar-fontes-<date>.txt`. If you change a field that goes into the file name (date, publisher…), the
   file is renamed. Title and authors are changed record by record.
+
+### Deleting several sources at once
+Select the records (as in "Editing several records at once", using the file format or status filter to reach the right
+ones) and press **Delete selected…**.
+- A question appears with the **titles** of the first sources and the total number. With **50 sources or more** it also
+  asks you to **type the number**; if you do not, nothing is deleted.
+- Before deleting, the programme makes a **backup** of the database.
+- The records leave the database, **together with their reading notes**. The files are not deleted for good: they go to
+  the **Mac's Bin**, in a folder called **«Fontes apagadas»** with the date and time (with the same subfolders as
+  `biblioteca`), and you can recover them as long as you do not empty the Bin. This includes the original photographs
+  of sources made from images (`_originais`).
+- A file (or originals folder) that **another record also uses** is left where it is.
+- Records that are **Processing** are skipped (the programme may be working on them): they stay selected, to try again
+  later.
+- It is done in blocks of 100 (progress is shown) and the list of what was done is left in
+  `app/registos/apagar-fontes-<date>.txt`.
 
 ## 6. Exporting bibliographies
 
@@ -498,6 +537,41 @@ with your account. The library is not reachable from the internet.
 The **About** page (the last item in the menu) shows the version, licence, source code link, how to cite TINCTORIS
 (ready to copy) and the credits. The **Help** page (the item before it) has the links to the manuals and guides and the
 **Send feedback** button.
+
+### Read-only copy (external drive)
+In **Settings → Read-only copy (external drive)** (below the local AI) you make a **read-only copy** of the library on an
+external drive. The drive opens with a **double-click** on any computer, **Mac or Windows**, with nothing to install and
+no internet, and is meant for consulting, or for lending to colleagues and students.
+
+How to do it:
+1. Connect the drive and choose it in the **Destination drive** list (it appears with its free space and format;
+   **Look for drives** refreshes the list; **Another folder…** lets you type a path). The copy goes in a folder called
+   **«TINCTORIS»** on the drive. The drive should be **exFAT**, otherwise Windows cannot open it (the programme warns
+   you).
+2. Press **See what will change**. This is only a **simulation**: nothing is written to the drive. It shows how many
+   sources and reading notes will go in, how many files are to be copied, how many are already up to date and how many
+   will be deleted from the drive, and saves the full list in `app/registos/`.
+3. Press **Update the copy**. Progress appears on screen. You can press **Stop** at any time: next time it carries on
+   where it left off. The first copy may take several hours (there are many files); later ones only copy what changed.
+4. To open the copy: **double-click «Abrir TINCTORIS.html»** in the drive's folder. The page shows the sources (with
+   search, also in the full text) and the reading notes, for reading only. This page is in Portuguese.
+
+What **goes into** the copy: all the records (those **To review** mixed in with the others), the **reading notes**, each
+source's files (with the same folders as `biblioteca`), the original photographs (images only) and the full text.
+
+What **stays out** (the drive may be lent):
+- the **notes on the record** and the review notes;
+- **tags** and **contexts / course units**;
+- **your name** among the keywords (the library itself is left as it is);
+- the field **Where the physical copy is**, and the programme's other internal fields (only a fixed list of each type's
+  fields goes out);
+- `_duplicados` and any file that does not belong to a record.
+
+Safety: the programme only writes inside the «TINCTORIS» folder on the drive and never touches the library. In an
+update it deletes from the drive only the files that no longer belong to any source. If it would delete **more than
+10%** of the files on the drive, or if the library seems disconnected or has many missing files, it asks you to **type
+the number** of files to be deleted; if you do not, nothing is changed. The exact format of the copy is in
+`app/leitura/FORMATO.md`.
 
 ## 10. Backups
 

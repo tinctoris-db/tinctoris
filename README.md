@@ -66,7 +66,7 @@ biblioteca:
 1. **Verifica se é repetido:** se já existir (mesmo conteúdo, qualquer nome), vai
    para `biblioteca/_duplicados`.
 2. **Lê o ficheiro**, pela ordem de confiança seguinte:
-   - a capa do JSTOR, de onde tira o DOI;
+   - a **folha de rosto do JSTOR**, que é lida por inteiro (ver «Folha de rosto do JSTOR», mais abaixo);
    - a **capa do documento**, pelo tamanho e pela posição das letras (título,
      autor, ano; nas teses também o grau, o orientador e a instituição). Nas
      digitalizações usa o OCR para isto;
@@ -106,13 +106,34 @@ biblioteca:
 7. **Renomeia e move o ficheiro** para `biblioteca/`, por exemplo
    `Livro/2003/2003_SUTCLIFFE_The-Keyboard-Sonatas.pdf`.
    Se a identificação não for segura, o ficheiro vai para `_por_rever`.
-8. **Faz OCR** (reconhecimento de texto), mas **só depois de a fonte estar
-   identificada** e **nunca em partituras** (o OCR lê texto, não notas). Assim o
-   Mac não fica ocupado durante horas com documentos ainda por rever. O OCR corre em
-   segundo plano, para poder pesquisar dentro dos documentos.
+8. **Faz OCR** (reconhecimento de texto), mas **nunca em partituras** (o OCR lê
+   texto, não notas). Primeiro trata as fontes **já identificadas** («Completo»).
+   As fontes **«Por rever»** também têm OCR, mas só quando já não há mais nada na
+   fila de entrada: aproveita o Mac parado (por exemplo, à noite) e o texto fica
+   pesquisável mesmo antes de a ficha ser confirmada. O OCR corre em segundo plano,
+   para poder pesquisar dentro dos documentos, e pára enquanto a intensidade estiver
+   em «Poupança» ou «Pausa» (página **Actividade**). O botão **Refazer OCR**, na ficha,
+   põe esse documento **à frente** da fila (também numa fonte por rever). Nos PDFs de
+   digitalizações com páginas declaradas muito pequenas (por exemplo, 5 × 7 cm com
+   imagens a 600 ppi), o OCR usa uma resolução mais alta (até 1200 dpi), para o
+   texto não sair vazio.
 
 O ficheiro é **movido**, não copiado: a `watch_folder` fica vazia, e as pastas
 que lá largou são apagadas quando ficam vazias.
+
+**Folha de rosto do JSTOR.** Os artigos descarregados do JSTOR começam por uma
+folha com os dados do artigo. A biblioteca lê-a **por inteiro**: título, autores,
+revista, volume, número, páginas, ano, editora e a ligação estável
+(`jstor.org/stable/…`, guardada em «URL»). Com a revista, o título e o ano bem lidos,
+a ficha fica **completa** (origem «capa do JSTOR») sem pesquisar mais, porque a
+pesquisa por título só trazia outros artigos do mesmo autor. Sem autor (por exemplo,
+«Editorial», «Back Matter», «Index»), fica **por rever**, como todas as fichas.
+- O **DOI** só é gravado se o CrossRef confirmar que «10.2307/<número do JSTOR>» existe
+  e é o mesmo artigo; o número do JSTOR, por si só, não é um DOI.
+- Nas **recensões** («Review of…», «Reviewed work(s)»), o artigo é do recenseador, e o
+  livro recenseado vai para o campo **«Obra recenseada»** (nos Artigos) em vez de ir
+  para o título ou para os autores. O título da ficha é o da recensão, ou
+  «Review of: …» quando não tem título próprio.
 
 **Manuscritos e impressos antigos.** A biblioteca aproveita o nome do ficheiro:
 - **data no início**: `1538 …`, `1580-1590 …`, `c1520 …`, `17xx …` (fica
@@ -377,7 +398,8 @@ gravações com o mesmo título, ou é um manuscrito sem correspondência online
 fonte aparece em **Por rever**, com um número no menu. Para cada uma:
 
 - **Escolha uma sugestão** («Usar esta»). Cada sugestão mostra de onde vem e a
-  percentagem de confiança.
+  percentagem de confiança. «Usar esta» preenche a ficha com os dados da sugestão
+  e avisa «Verifique e confirme»: pode corrigir à mão antes de guardar.
 - ou **preencha à mão** os campos;
 - ou carregue em **Pesquisa aprofundada** para consultar *todas* as fontes:
   CrossRef, OpenAlex, Open Library, Google Books, Zenodo, DataCite, HAL,
@@ -475,7 +497,15 @@ dos documentos (incluindo o texto obtido por OCR).
 - Palavras incompletas também servem: `polif` encontra «polifonia».
 - Para uma expressão exacta, use aspas: `"basso continuo"`.
 - O botão **Filtros** permite filtrar por autor, título, tipo, contexto/UC,
-  natureza (primária/secundária), estado, intervalo de anos e etiqueta.
+  natureza (primária/secundária), estado, intervalo de anos, etiqueta e
+  **formato do ficheiro**.
+- **Formato do ficheiro:** abre uma lista com caixas, cada formato com o número de
+  fontes que o têm (PDF, Word, RTF, texto simples, EPUB, Finale, Sibelius, MIDI,
+  outras partituras, imagem, áudio, vídeo…). Pode marcar **vários** ao mesmo tempo
+  (aparecem as fontes de qualquer um deles: PDF **ou** Word, por exemplo).
+  **«Sem ficheiro»** mostra as fichas sem ficheiro (feitas à mão, livros em papel,
+  discos…). **Desmarcar todos** limpa a escolha. Conta o formato do ficheiro
+  principal da ficha.
 - **Ordenar por**, por cima da lista: mais recentes, título, autor (pelo
   apelido) ou data, em ordem crescente ou decrescente. Numa pesquisa por texto
   há também «Relevância». A ordem é a de um catálogo: ignora maiúsculas,
@@ -499,6 +529,24 @@ têm: os gerais (editora, local, data, natureza), os do tipo que todas partilham
   processar» e deixa a lista do que mudou em `app/registos/editar-fontes-<data>.txt`.
   Se mudar um campo que entra no nome do ficheiro (data, editora…), o ficheiro é
   renomeado. Título e autores mudam-se ficha a ficha.
+
+### Apagar várias fontes de uma vez
+Seleccione as fichas (como em «Editar várias fichas de uma vez», com o filtro do
+formato ou do estado para chegar às certas) e carregue em **Apagar as seleccionadas…**.
+- Aparece uma pergunta com os **títulos** das primeiras fontes e o número total. Com
+  **50 fontes ou mais** pede também para **escrever o número**; se não o escrever,
+  nada é apagado.
+- Antes de apagar, o programa faz uma **cópia de segurança** da base.
+- As fichas saem da base de dados, **com as suas notas de leitura**. Os ficheiros
+  não são apagados de vez: vão para o **Lixo do Mac**, numa pasta **«Fontes apagadas»**
+  com a data e a hora (com as mesmas subpastas da `biblioteca`), e pode recuperá-los
+  enquanto não esvaziar o Lixo. Isto inclui as fotografias originais das fontes feitas
+  de imagens (`_originais`).
+- Um ficheiro (ou pasta de originais) que **outra ficha também usa** não sai do sítio.
+- As fichas **«A processar»** são saltadas (o programa pode estar a trabalhar nelas):
+  ficam seleccionadas, para tentar mais tarde.
+- Faz-se em blocos de 100 (aparece o andamento) e a lista do que foi feito fica em
+  `app/registos/apagar-fontes-<data>.txt`.
 
 ## 6. Exportar bibliografias
 
@@ -595,6 +643,47 @@ biblioteca não fica acessível a partir da internet.
 A página **Acerca** (último item do menu) mostra a versão, a licença, a ligação ao código-fonte, como citar o
 TINCTORIS (pronto a copiar) e os créditos. A página **Ajuda** (o item anterior) tem as ligações para os manuais e guias e o
 botão «Enviar comentário».
+
+### Cópia de leitura (disco externo)
+Em **Definições → «Cópia de leitura (disco externo)»** (por baixo da IA local) faz-se uma
+**cópia só de leitura** da biblioteca para um disco externo. O disco abre-se com
+**duplo clique** em qualquer computador, **Mac ou Windows**, sem instalar nada e sem
+internet, e serve para consultar, ou para emprestar a colegas e alunos.
+
+Como se faz:
+1. Ligue o disco e escolha-o na lista **Disco de destino** (aparece com o espaço livre e
+   o tipo de formatação; **Procurar discos** actualiza a lista; **Outra pasta…** deixa
+   escrever o caminho). A cópia fica numa pasta chamada **«TINCTORIS»** dentro do disco.
+   O disco deve estar em **exFAT**, senão o Windows não o abre (o programa avisa).
+2. Carregue em **Ver o que vai mudar**. É só uma **simulação**: nada é escrito no disco.
+   Mostra quantas fontes e notas de leitura vão, quantos ficheiros há para copiar, os que
+   já estão em dia e os que serão apagados do disco, e guarda a lista completa em
+   `app/registos/`.
+3. Carregue em **Actualizar a cópia**. O andamento aparece no ecrã. Pode **Parar** a
+   qualquer momento: da vez seguinte continua onde ficou. A primeira cópia pode levar
+   várias horas (são muitos ficheiros); as seguintes só copiam o que mudou.
+4. Para abrir a cópia: **duplo clique em «Abrir TINCTORIS.html»**, na pasta do disco. A
+   página mostra as fontes (com pesquisa, também no texto integral) e as notas de
+   leitura, só para ler. Esta página está em português.
+
+O que **vai** para a cópia: todas as fichas (as «Por rever» misturadas com as outras),
+as **notas de leitura**, os ficheiros de cada fonte (com as mesmas pastas da
+`biblioteca`), as fotografias originais (só as imagens) e o texto integral.
+
+O que **não vai** (o disco pode ser emprestado):
+- as **notas da ficha** e as notas para rever;
+- as **etiquetas** e os **contextos / UC**;
+- o **seu nome** nas palavras-chave (a biblioteca fica como está);
+- o campo **«Onde está o exemplar físico»**, e os outros campos internos do programa
+  (só sai uma lista fixa de campos de cada tipo);
+- `_duplicados` e qualquer ficheiro que não pertença a uma ficha.
+
+Segurança: o programa só escreve dentro da pasta «TINCTORIS» do disco e nunca mexe na
+biblioteca. Numa actualização, apaga do disco apenas os ficheiros que já não pertencem
+a nenhuma fonte. Se for apagar **mais de 10 %** dos ficheiros do disco, ou se a
+biblioteca parecer desligada ou com muitos ficheiros em falta, pede para **escrever o
+número** de ficheiros a apagar; se não o escrever, nada é alterado. O contrato exacto
+da cópia está em `app/leitura/FORMATO.md`.
 
 ## 10. Cópias de segurança
 
