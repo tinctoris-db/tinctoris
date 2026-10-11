@@ -1,6 +1,6 @@
 # TINCTORIS — novidades de cada versão
 
-## 0.10.0-beta (12 de Outubro de 2026)
+## 0.10.0-beta (11 de Outubro de 2026)
 
 ### Interface
 - **Interface em inglês.** Escolhe-se em Definições, nas boas-vindas ou no ecrã de entrada; na primeira vez segue o
