@@ -4,7 +4,7 @@
 
 APP="${0:A:h}"
 RAIZ="${APP:h}"
-export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH="$APP/node/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export BIBLIOTECA_DIR="$RAIZ/biblioteca"
 export WATCH_DIR="$RAIZ/watch_folder"
 export PB_PORTA=8090

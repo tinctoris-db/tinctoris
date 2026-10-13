@@ -7,7 +7,7 @@ atualizar() {
   local raiz="$1" app="$1/app"
   cd "$raiz" || return
   [[ -d .git ]] || return
-  export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+  export PATH="$app/node/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
   # (com a biblioteca já a correr não se mexe no programa: o iniciar.sh só abre o navegador)
   curl -s -m 2 "http://127.0.0.1:${PB_PORTA:-8090}/api/health" >/dev/null 2>&1 && return
   echo "A ver se há uma versão nova do programa…"

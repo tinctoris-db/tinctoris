@@ -12,6 +12,9 @@ recordings, instruments, iconography. Each person installs it on their own Mac a
 
 - **A Mac with an Apple processor** (M1 or later). To check:  → About This Mac → «Chip: Apple M…».
   The beta does not run on Intel Macs: in class, work in a pair with a colleague.
+- **macOS 15 (Sequoia) or later**, ideally. Older versions work, but Homebrew no longer has ready-made packages for
+  them and builds them on the Mac: installation may take several hours and fail. If you can, update first
+  (System Settings → General → Software Update).
 - **An administrator account** on the Mac, and its password (on a personal Mac, this is usually yours).
 - **An internet connection** and **15 to 25 minutes** (the first installation downloads several components).
 - Free disk space: about 3 GB, plus 6 GB if you want the local AI, plus the space your sources need.

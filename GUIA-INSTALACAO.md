@@ -11,6 +11,9 @@ partituras, gravações, instrumentos, iconografia. Cada pessoa instala-o no seu
 
 - **Mac com processador Apple** (M1 ou mais recente). Para confirmar:  → Acerca deste Mac → «Chip: Apple M…».
   Num Mac com processador Intel, a versão beta não funciona: nas aulas, trabalhe em par com um colega.
+- **macOS 15 (Sequoia) ou mais recente**, de preferência. Em versões mais antigas funciona, mas o Homebrew já não tem
+  as peças prontas e constrói-as no Mac: a instalação pode demorar várias horas e falhar. Se puder, actualize primeiro
+  (Definições do Sistema → Geral → Actualização de software).
 - **Conta de administrador** no Mac e a respectiva palavra-passe (num Mac pessoal, é normalmente a sua).
 - **Ligação à internet** e **15 a 25 minutos** (a primeira instalação descarrega várias peças).
 - Espaço livre: cerca de 3 GB, mais 6 GB se quiser a IA local, mais o espaço das suas fontes.

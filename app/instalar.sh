@@ -4,16 +4,65 @@
 set -e
 
 APP="${0:A:h}"
-export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH="$APP/node/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 cd "$APP"
 
-echo "1/6  Programas necessários (Homebrew)"
+# Node.js: serve o que já houver no Mac (versão 22 ou mais recente); senão, a versão oficial de nodejs.org,
+# já pronta, guardada em app/node. Não se usa o Homebrew porque, em macOS antigos, ele constrói o Node
+# a partir do código-fonte (uma hora ou mais, e pode falhar).
+NODE_MINIMO=22
+NODE_LINHA="latest-v22.x"
+node_serve() {
+  local v
+  v=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null) || return 1
+  (( ${v:-0} >= NODE_MINIMO ))
+}
+instalar_node() {
+  local base="${TINCTORIS_NODE_URL:-https://nodejs.org/dist/$NODE_LINHA}" arq somas linha soma nome tmp
+  arq=$([[ "$(uname -m)" == "arm64" ]] && echo arm64 || echo x64)
+  somas=$(curl -fsSL -m 60 "$base/SHASUMS256.txt") || { echo "     Não consegui contactar nodejs.org."; return 1 }
+  linha=$(print -r -- "$somas" | grep -E " node-v[0-9.]+-darwin-$arq\.tar\.gz\$" | head -1)
+  [[ -n "$linha" ]] || { echo "     Não encontrei o Node.js para este Mac em nodejs.org."; return 1 }
+  soma=${linha%% *}; nome=${linha##* }
+  echo "     A descarregar o Node.js (${nome%.tar.gz}, cerca de 50 MB) de nodejs.org..."
+  tmp=$(mktemp -d)
+  curl -fsSL -m 900 -o "$tmp/$nome" "$base/$nome" || { rm -rf "$tmp"; echo "     A descarga do Node.js falhou."; return 1 }
+  if [[ "$(shasum -a 256 "$tmp/$nome" | cut -d' ' -f1)" != "$soma" ]]; then
+    rm -rf "$tmp"; echo "     O Node.js descarregado não confere com a assinatura de nodejs.org."; return 1
+  fi
+  mkdir "$tmp/x" && tar -xzf "$tmp/$nome" -C "$tmp/x" || { rm -rf "$tmp"; return 1 }
+  rm -rf "$APP/node"
+  mv "$tmp/x/${nome%.tar.gz}" "$APP/node" && rm -rf "$tmp"
+  rehash
+}
+
+# Se outra instalação do Homebrew estiver a correr (por exemplo, o instalador aberto noutra janela),
+# espera que acabe em vez de falhar com «already locked».
+esperar_brew() {
+  local n=0
+  while pgrep -f "Homebrew/brew.rb" >/dev/null 2>&1; do
+    (( n == 0 )) && echo "     Há outra instalação do Homebrew a correr neste Mac. Espero que acabe (não feche esta janela)..."
+    (( n % 30 == 29 )) && echo "     Ainda à espera ($(( (n + 1) / 6 )) minutos)..."
+    (( ++n > 720 )) && { echo "     A outra instalação não acabou em 2 horas. Feche as outras janelas do Terminal, reinicie o Mac e corra outra vez a instalação."; return 1 }
+    sleep 10
+  done
+}
+
+echo "1/6  Programas necessários"
+if node_serve; then
+  echo "     Node.js $(node -v) (já estava no Mac)"
+else
+  instalar_node || { echo "     O Node.js não ficou instalado. Verifique a ligação à internet e volte a correr a instalação."; exit 1 }
+  node_serve || { echo "     O Node.js descarregado não arranca neste Mac."; exit 1 }
+  echo "     Node.js $(node -v) instalado em app/node"
+fi
 if ! command -v brew >/dev/null; then
   echo "     Falta o Homebrew. Instale-o a partir de https://brew.sh e volte a correr este script."
   exit 1
 fi
-for p in node tesseract poppler ffmpeg; do
+for p in tesseract poppler ffmpeg; do
   if ! brew list --formula "$p" >/dev/null 2>&1 && ! command -v "${p/poppler/pdftotext}" >/dev/null; then
+    esperar_brew
     echo "     A instalar $p..."
     brew install "$p"
   fi

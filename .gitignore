@@ -20,6 +20,7 @@ CLAUDE.local.md
 
 # ---- Programas e modelos descarregados (o instalar.sh volta a buscá-los)
 /app/bin/
+/app/node/
 /app/modelos/
 /app/tessdata/
 node_modules/

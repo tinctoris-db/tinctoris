@@ -70,6 +70,29 @@ if ! dseditgroup -o checkmember -m "$USER" admin >/dev/null 2>&1; then
   exit 1
 fi
 
+# macOS antigo: o Homebrew já não tem as peças prontas e constrói-as no Mac (pode levar horas e falhar)
+MACOS=$(sw_vers -productVersion 2>/dev/null)
+if (( ${MACOS%%.*} < 15 )); then
+  print ""
+  diz "Este Mac tem o macOS $MACOS. O TINCTORIS funciona, mas o Homebrew já não tem as peças prontas"
+  diz "para esta versão e vai construí-las no Mac: a instalação pode demorar várias horas e pode falhar."
+  diz "Se puder, actualize primeiro o macOS (Definições do Sistema → Geral → Actualização de software)."
+  pergunta_sim_nao "Este Mac tem o macOS $MACOS, que o Homebrew já não apoia por completo. A instalação pode demorar várias horas e pode falhar. Recomendamos actualizar primeiro o macOS (Definições do Sistema → Geral → Actualização de software). Quer continuar mesmo assim?" \
+    || { diz "Instalação cancelada. Depois de actualizar o macOS, cole outra vez a mesma linha no Terminal."; exit 0 }
+fi
+
+# Se outra instalação do Homebrew estiver a correr (por exemplo, este instalador aberto noutra janela),
+# espera que acabe em vez de falhar com «already locked».
+esperar_brew() {
+  local n=0
+  while pgrep -f "Homebrew/brew.rb" >/dev/null 2>&1; do
+    (( n == 0 )) && diz "Há outra instalação do Homebrew a correr neste Mac. Espero que acabe (não feche esta janela)…"
+    (( n % 30 == 29 )) && diz "Ainda à espera ($(( (n + 1) / 6 )) minutos)…"
+    (( ++n > 720 )) && falhar "outra instalação do Homebrew não acabou em 2 horas. Feche as outras janelas do Terminal, reinicie o Mac e cole outra vez a linha de instalação."
+    sleep 10
+  done
+}
+
 # ---- 2. Perguntas
 titulo "1/6  Onde guardar o TINCTORIS"
 PASTA=$(osascript -e 'POSIX path of (choose folder with prompt "Onde quer guardar o TINCTORIS e as suas fontes? Dentro da pasta escolhida será criada uma pasta «TINCTORIS». Pode ser um disco externo." default location (path to documents folder))' 2>/dev/null)
@@ -97,6 +120,7 @@ trap 'kill $MANTER_SUDO 2>/dev/null' EXIT
 # ---- 4. Homebrew (e as ferramentas da Apple, que o Homebrew instala)
 titulo "3/6  Homebrew"
 if [[ ! -x /opt/homebrew/bin/brew ]]; then
+  esperar_brew
   diz "A instalar o Homebrew e as ferramentas da Apple. É a parte mais demorada (10 a 15 minutos)"
   diz "e durante esse tempo esta janela não mostra nada: não a feche."
   NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" >>"$REGISTO" 2>&1 \
@@ -121,7 +145,10 @@ fi
 
 if (( IA )); then
   diz "A instalar o Ollama (para a IA local)…"
-  brew list --formula ollama >/dev/null 2>&1 || brew install ollama >>"$REGISTO" 2>&1 || falhar "o Ollama não ficou instalado."
+  if ! brew list --formula ollama >/dev/null 2>&1; then
+    esperar_brew
+    brew install ollama >>"$REGISTO" 2>&1 || falhar "o Ollama não ficou instalado."
+  fi
 fi
 
 # ---- 6. Peças, base de dados e (se pedida) o modelo de IA: o instalar.sh de sempre
