@@ -1,5 +1,7 @@
 # TINCTORIS
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23455238.svg)](https://doi.org/10.5281/zenodo.23455238)
+
 *Treatises, Inventories, Notation, Codices, Texts, Organology, Records, Iconography and Sources.* The name honours
 Johannes Tinctoris (c. 1435–1511), author of the *Terminorum musicae diffinitorium* (c. 1495), the first printed
 dictionary of music. (It used to be called «Biblioteca de Fontes».)

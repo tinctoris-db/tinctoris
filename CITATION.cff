@@ -8,6 +8,8 @@ authors:
     given-names: "Pedro"
     affiliation: "ESMAE-Faculdade de Artes Performativas | Universidade Técnica do Porto | Centro de Estudos em Música"
 version: "0.12.0-beta"
+# (DOI de todas as versões no Zenodo: aponta sempre para a mais recente)
+doi: "10.5281/zenodo.23455238"
 license: AGPL-3.0-or-later
 keywords:
   - musicology

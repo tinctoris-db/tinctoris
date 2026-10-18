@@ -2607,7 +2607,7 @@ async function caixaNovidades() {
 
 function vistaAcerca() {
   const p = principal()
-  const citacao = `Sousa Silva, P. (2026). TINCTORIS: Treatises, Inventories, Notation, Codices, Texts, Organology, Records, Iconography and Sources (${tr('Versão {versao}', { versao: VERSAO })}) [Software]. ${REPOSITORIO}`
+  const citacao = `Sousa Silva, P. (2026). TINCTORIS: Treatises, Inventories, Notation, Codices, Texts, Organology, Records, Iconography and Sources (${tr('Versão {versao}', { versao: VERSAO })}) [Software]. Zenodo. https://doi.org/10.5281/zenodo.23455238`
   const copiarCitacao = async () => {
     try {
       await navigator.clipboard.writeText(citacao)
