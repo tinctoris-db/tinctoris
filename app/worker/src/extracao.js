@@ -23,9 +23,9 @@ export async function pdfInfo(p) {
       const i = linha.indexOf(':')
       if (i > 0) d[linha.slice(0, i).trim()] = linha.slice(i + 1).trim()
     }
-    return { titulo: d.Title || '', autor: d.Author || '', assunto: d.Subject || '', palavras: d.Keywords || '', paginas: parseInt(d.Pages || '0', 10) || 0, programa: d.Creator || '' }
+    return { titulo: d.Title || '', autor: d.Author || '', assunto: d.Subject || '', palavras: d.Keywords || '', paginas: parseInt(d.Pages || '0', 10) || 0, programa: d.Creator || '', produtor: d.Producer || '' }
   } catch (_) {
-    return { titulo: '', autor: '', assunto: '', palavras: '', paginas: 0, programa: '' }
+    return { titulo: '', autor: '', assunto: '', palavras: '', paginas: 0, programa: '', produtor: '' }
   }
 }
 

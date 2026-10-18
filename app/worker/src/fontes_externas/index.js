@@ -5,7 +5,7 @@ import * as C from './academicas.js'
 import { gallicaPesquisar } from './gallica.js'
 import { k10plusPorIsbn } from './k10plus.js'
 import { dspacePesquisar } from './repositorios.js'
-import { semelhanca, contido, normalizar } from './util.js'
+import { semelhanca, contido, normalizar, anotarErro } from './util.js'
 
 // Cada fonte recebe a consulta {titulo, autor, artista} e as definições.
 const FONTES = {
@@ -36,8 +36,9 @@ const AUTOMATICO = {
   partitura: ['imslp', 'rism'],
   // (Google Books e repositórios nacionais — RECIPP — também, a pedido do Pedro, 1/10/2026; Google Scholar e JSTOR
   // não permitem pesquisa automática: ficam as ligações na ficha)
-  escrita: ['crossref', 'openalex', 'openlibrary', 'openaire', 'googlebooks', 'recipp'],
-  tese: ['openaire', 'recipp', 'openalex', 'crossref'],
+  // (Semantic Scholar e Google Books só com a chave do Pedro em Definições: sem ela a quota partilhada esgota-se)
+  escrita: ['crossref', 'openalex', 'openlibrary', 'openaire', 'googlebooks', 'semanticscholar', 'recipp'],
+  tese: ['openaire', 'recipp', 'openalex', 'crossref', 'semanticscholar'],
 }
 
 function textoAutores(c) {
@@ -91,7 +92,7 @@ async function consultar(nomes, q, defs) {
   const todos = []
   res.forEach((r, i) => {
     if (r.status === 'fulfilled') todos.push(...(r.value || []))
-    else erros.push(`${nomes[i]}: ${r.reason?.message || r.reason}`)
+    else anotarErro(erros, nomes[i], r.reason)
   })
   const lista = semDuplicados(todos.filter((c) => c && c.titulo).map((c) => pontuar(c, q)))
   lista.sort((a, b) => b.confianca - a.confianca)
@@ -144,7 +145,7 @@ export async function automatico(q, defs) {
   if (exato) return { candidatos: [exato], erros: [] }
   // (o Google Books só entra na pesquisa automática com a chave do Pedro: sem ela a quota partilhada está sempre esgotada;
   //  continua na «Pesquisa aprofundada»)
-  const nomes = (AUTOMATICO[q.genero] || AUTOMATICO.escrita).filter((n) => n !== 'googlebooks' || defs.google_books_api_key)
+  const nomes = (AUTOMATICO[q.genero] || AUTOMATICO.escrita).filter((n) => (n !== 'googlebooks' || defs.google_books_api_key) && (n !== 'semanticscholar' || defs.semantic_scholar_api_key))
   const r = await consultar(nomes, q, defs)
   r.candidatos = r.candidatos.slice(0, 10)
   return r

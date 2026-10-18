@@ -13,6 +13,7 @@ import { PASTAS, ORIGINAIS } from './config.js'
 import { correr } from './extracao.js'
 import * as F from './ficheiros.js'
 import { log } from './registo.js'
+import { m, traduzivel } from './mensagens.js'
 import { esperarVez } from './intensidade.js'
 import { separarReferencias } from './referencias.js'
 import { pastaDoDisco } from './referencias_discos.js'
@@ -129,7 +130,7 @@ export async function juntarGrupo(grupo) {
       throw e
     }
     const final = await F.mover(provisorio, dir, nome)
-    log.info(`${grupo.ficheiros.length} imagens juntadas num PDF de visualização: ${path.basename(final)} (originais em ${relOriginais})`)
+    log.info(m('{n} imagens juntadas num PDF de visualização: {ficheiro} (originais em {originais})', { n: grupo.ficheiros.length, ficheiro: path.basename(final), originais: relOriginais }))
     return final
   } finally {
     await fsp.rm(tmp, { recursive: true, force: true })
@@ -180,9 +181,9 @@ export function agendarImagem(ficheiro, tratarUma, tratarLivros = null, tratarDi
         await juntarGrupo(g) // o PDF novo entra pela watch folder
       } catch (err) {
         // (as fotografias de uma fonte nunca são tratadas uma a uma: ficam na watch folder até ao próximo arranque)
-        if (g.pasta) log.erro(`Não consegui juntar as imagens de «${g.nome}» (${err.message}); ficam na watch folder`)
+        if (g.pasta) log.erro(m('Não consegui juntar as imagens de «{nome}» ({erro}); ficam na watch folder', { nome: g.nome, erro: traduzivel(err) }))
         else {
-          log.aviso(`Não consegui juntar as imagens de «${g.nome}» (${err.message}); vão ser tratadas uma a uma`)
+          log.aviso(m('Não consegui juntar as imagens de «{nome}» ({erro}); vão ser tratadas uma a uma', { nome: g.nome, erro: traduzivel(err) }))
           g.ficheiros.filter((f) => fs.existsSync(f)).forEach(tratarUma)
         }
       }

@@ -165,7 +165,8 @@ function reencaminhar(e, metodo) {
       timeout: 180,
     })
   } catch (err) {
-    return e.json(503, { erro: "O serviço de fundo não está a correr." })
+    // (erro_chave: a interface mostra a mensagem no idioma escolhido; ver worker/src/mensagens.js)
+    return e.json(503, { erro: "O serviço de fundo não está a correr.", erro_chave: "O serviço de fundo não está a correr." })
   }
   return e.json(res.statusCode, res.json)
 }
@@ -174,6 +175,16 @@ function reencaminhar(e, metodo) {
 function pedidoLocal(e) {
   const ip = String(e.remoteIP() || "").toLowerCase()
   return /^127\./.test(ip) || /^::ffff:127\./.test(ip) || /^[0:]+:0*1$/.test(ip)
+}
+
+// A própria página da biblioteca aberta neste computador: IP local e Host/Origin locais (um site aberto no navegador
+// deste Mac, ou um nome de domínio apontado para 127.0.0.1, não passa)
+function paginaLocal(e) {
+  const local = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i
+  const host = String(e.request.host || "")
+  const origem = String(e.request.header.get("Origin") || "")
+  const origemOk = !origem || /^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(origem)
+  return pedidoLocal(e) && local.test(host) && origemOk
 }
 
 // Última alteração do código: o ficheiro do programa modificado mais recentemente.
@@ -283,4 +294,4 @@ function propagarAosLotes(app, record, antes) {
   }
 }
 
-module.exports = { tituloCurto, antesDoPdf, propagarAosLotes, numerar, ultimaAlteracaoCodigo, ultimaAlteracaoDados, pedidoLocal, reencaminhar, ler, derivar, reindexar, verificarIndice, reconstruirIndice, remover, expressao, pastaBiblioteca }
+module.exports = { tituloCurto, antesDoPdf, propagarAosLotes, numerar, ultimaAlteracaoCodigo, ultimaAlteracaoDados, pedidoLocal, paginaLocal, reencaminhar, ler, derivar, reindexar, verificarIndice, reconstruirIndice, remover, expressao, pastaBiblioteca }

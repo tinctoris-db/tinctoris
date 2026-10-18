@@ -17,6 +17,7 @@ import { execFile } from 'node:child_process'
 import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 import { PASTAS, DUPLICADOS, padroesDono } from './config.js'
+import { m, erro, traduzivel } from './mensagens.js'
 
 const FORMATO = 1
 const MARCA = '.tinctoris-leitura.json'
@@ -291,26 +292,26 @@ export function foraDasProtegidas(destino, protegidas = pastasProtegidas()) {
 
 // A pasta escolhida: tem de ser uma cópia de leitura, estar vazia (ignorando ficheiros escondidos do sistema) ou ainda não existir
 async function verificarDestino(destino, origem, base) {
-  if (!destino) throw new Error('Falta a pasta de destino.')
+  if (!destino) throw erro('Falta a pasta de destino.')
   destino = path.resolve(destino)
   const pai = path.dirname(destino)
-  if (!fs.existsSync(pai)) throw new Error(`A pasta onde ficaria a cópia não existe (o disco está ligado?): ${pai}`)
+  if (!fs.existsSync(pai)) throw erro('A pasta onde ficaria a cópia não existe (o disco está ligado?): {pai}', { pai })
   if (!foraDasProtegidas(destino, [origem, base, ...pastasProtegidas()]))
-    throw new Error('O destino não pode ficar dentro da biblioteca nem da pasta do TINCTORIS (nem conter a biblioteca).')
+    throw erro('O destino não pode ficar dentro da biblioteca nem da pasta do TINCTORIS (nem conter a biblioteca).')
   const st = await lstat(destino)
   if (!st) return { destino, existe: false, marca: null }
-  if (!st.isDirectory()) throw new Error(`O destino não é uma pasta: ${destino}`)
+  if (!st.isDirectory()) throw erro('O destino não é uma pasta: {destino}', { destino })
   const stMarca = await lstat(path.join(destino, MARCA))
-  if (stMarca && !stMarca.isFile()) throw new Error(`No destino, ${MARCA} não é um ficheiro normal (ligação ou pasta): recusado.`)
+  if (stMarca && !stMarca.isFile()) throw erro('No destino, {marca} não é um ficheiro normal (ligação ou pasta): recusado.', { marca: MARCA })
   const marca = await lerMarca(destino)
   if (!marca) {
     const visiveis = (await fsp.readdir(destino)).filter((n) => !n.startsWith('.'))
     if (visiveis.length || stMarca)
-      throw new Error(`A pasta de destino não está vazia e não é uma cópia de leitura do TINCTORIS (falta ${MARCA}): ${destino}`)
+      throw erro('A pasta de destino não está vazia e não é uma cópia de leitura do TINCTORIS (falta {marca}): {destino}', { marca: MARCA, destino })
   }
   for (const p of ['biblioteca', 'dados', 'dados/texto', 'leitura']) {
     const s = await lstat(path.join(destino, p))
-    if (s && !s.isDirectory()) throw new Error(`No destino, «${p}» não é uma pasta normal (ligação ou ficheiro): recusado.`)
+    if (s && !s.isDirectory()) throw erro('No destino, «{pasta}» não é uma pasta normal (ligação ou ficheiro): recusado.', { pasta: p })
   }
   return { destino, existe: true, marca }
 }
@@ -343,10 +344,13 @@ export async function planear(opcoes = {}) {
   const inicio = Date.now()
   const base = path.resolve(opcoes.base || path.join(PASTAS.app, 'pb_data', 'data.db'))
   const origem = path.resolve(opcoes.origem || PASTAS.biblioteca)
-  if (!fs.existsSync(base)) throw new Error(`Base de dados não encontrada: ${base}`)
-  if (!fs.existsSync(origem)) throw new Error(`Pasta da biblioteca não encontrada: ${origem}`)
+  if (!fs.existsSync(base)) throw erro('Base de dados não encontrada: {base}', { base })
+  if (!fs.existsSync(origem)) throw erro('Pasta da biblioteca não encontrada: {origem}', { origem })
   const { destino, existe, marca } = await verificarDestino(opcoes.destino, origem, base)
   const avisos = []
+  const avisosT = []
+  // (cada aviso fica em português em `avisos` e como mensagem traduzível, na mesma ordem, em `avisos_t`)
+  const avisar = (x) => (avisos.push(x.msg), avisosT.push(x))
   // (amostra = só algumas fichas: nunca pode substituir uma cópia completa, senão apagava o resto do disco)
   const amostra = !!(opcoes.numeros?.length || opcoes.amostra > 0)
   const amostraSobreCompleta = amostra && !!marca && marca.amostra !== true
@@ -575,7 +579,7 @@ export async function planear(opcoes = {}) {
   const dirInter = path.resolve(opcoes.fontesInter || path.join(PASTAS.app, 'pb_public', 'fontes'))
   const daPagina = (await percorrer(dirPagina)).ficheiros.filter((x) => !x.ligacao && !x.rel.split('/').some((s) => s.startsWith('.')) && x.rel !== 'FORMATO.md')
   for (const x of daPagina) pagina.push({ de: path.join(dirPagina, x.rel), para: x.rel === 'index.html' ? PAGINA : `leitura/${x.rel}` })
-  if (!daPagina.some((x) => x.rel === 'index.html')) avisos.push(`A página ainda não existe (falta ${path.join(dirPagina, 'index.html')}): a cópia fica sem «${PAGINA}».`)
+  if (!daPagina.some((x) => x.rel === 'index.html')) avisar(m('A página ainda não existe (falta {ficheiro}): a cópia fica sem «{pagina}».', { ficheiro: path.join(dirPagina, 'index.html'), pagina: PAGINA }))
   for (const f of FONTES_INTER)
     if (!daPagina.some((x) => x.rel === `fontes/${f}`) && fs.existsSync(path.join(dirInter, f))) pagina.push({ de: path.join(dirInter, f), para: `leitura/fontes/${f}` })
 
@@ -590,8 +594,8 @@ export async function planear(opcoes = {}) {
   const bytesCopiar = copiar.reduce((s, x) => s + x.tamanho, 0)
   const bytesLibertados = apagar.reduce((s, x) => s + x.tamanho, 0) + copiar.reduce((s, x) => s + x.substitui, 0)
   const necessario = clonar ? 0 : Math.max(0, bytesCopiar - bytesLibertados)
-  if (sistema && sistema !== 'exfat') avisos.push(`O disco de destino não é exFAT (é ${sistema}): pode não abrir em Windows. Para emprestar a quem usa Windows, formatar o disco em exFAT.`)
-  if (necessario > livre) avisos.push(`Espaço insuficiente no destino: faltam ${tamanho(necessario - livre)} (precisa de ${tamanho(necessario)}, livre ${tamanho(livre)}).`)
+  if (sistema && sistema !== 'exfat') avisar(m('O disco de destino não é exFAT (é {sistema}): pode não abrir em Windows. Para emprestar a quem usa Windows, formatar o disco em exFAT.', { sistema }))
+  if (necessario > livre) avisar(m('Espaço insuficiente no destino: faltam {falta} (precisa de {precisa}, livre {livre}).', { falta: tamanho(necessario - livre), precisa: tamanho(necessario), livre: tamanho(livre) }))
 
   // Nomes que o Windows (e o exFAT) recusam ou confunde
   const raizWin = `${path.basename(destino)}/biblioteca/`
@@ -600,14 +604,14 @@ export async function planear(opcoes = {}) {
   const porMinusculas = new Map()
   for (const c of necessarios.keys()) porMinusculas.set(c.toLowerCase(), [...(porMinusculas.get(c.toLowerCase()) || []), c])
   const maiusculas = [...porMinusculas.values()].filter((l) => l.length > 1)
-  if (longos.length) avisos.push(`${longos.length} caminhos com mais de ${LIMITE_WINDOWS} caracteres: em Windows podem não abrir (ver a lista).`)
-  if (invalidos.length) avisos.push(`${invalidos.length} nomes com caracteres que o exFAT/Windows não aceitam (: * ? " < > | \\ ou ponto/espaço no fim): a cópia desses pode falhar (ver a lista).`)
-  if (maiusculas.length) avisos.push(`${maiusculas.length} grupos de ficheiros que só diferem em maiúsculas/minúsculas: no exFAT/Windows ficaria só um (ver a lista).`)
-  if (fora.length) avisos.push(`${fora.length} ficheiros fora da biblioteca ou em ${DUPLICADOS}/ (não saem).`)
-  if (semNumeroComTexto) avisos.push(`${semNumeroComTexto} fichas sem número permanente têm texto integral: o texto não sai.`)
-  if (reservados.length) avisos.push(`${reservados.length} ficheiros/pastas com nomes que o Windows reserva (CON, PRN, AUX, NUL, COM1…, LPT1…): não saem (ver a lista).`)
+  if (longos.length) avisar(m('{n} caminhos com mais de {limite} caracteres: em Windows podem não abrir (ver a lista).', { n: longos.length, limite: LIMITE_WINDOWS }))
+  if (invalidos.length) avisar(m('{n} nomes com caracteres que o exFAT/Windows não aceitam (: * ? " < > | \\ ou ponto/espaço no fim): a cópia desses pode falhar (ver a lista).', { n: invalidos.length }))
+  if (maiusculas.length) avisar(m('{n} grupos de ficheiros que só diferem em maiúsculas/minúsculas: no exFAT/Windows ficaria só um (ver a lista).', { n: maiusculas.length }))
+  if (fora.length) avisar(m('{n} ficheiros fora da biblioteca ou em {duplicados}/ (não saem).', { n: fora.length, duplicados: DUPLICADOS }))
+  if (semNumeroComTexto) avisar(m('{n} fichas sem número permanente têm texto integral: o texto não sai.', { n: semNumeroComTexto }))
+  if (reservados.length) avisar(m('{n} ficheiros/pastas com nomes que o Windows reserva (CON, PRN, AUX, NUL, COM1…, LPT1…): não saem (ver a lista).', { n: reservados.length }))
   if (amostraSobreCompleta)
-    avisos.push('Esta pasta tem uma cópia completa (ou de uma versão antiga do exportador): uma amostra não a pode substituir, porque apagaria o resto. Use outra pasta para a amostra.')
+    avisar(m('Esta pasta tem uma cópia completa (ou de uma versão antiga do exportador): uma amostra não a pode substituir, porque apagaria o resto. Use outra pasta para a amostra.'))
 
   // Confirmação escrita: apagar muito do disco, a biblioteca inacessível ou muitos ficheiros em falta (FORMATO.md §5)
   // (as mudanças de nome não contam: o ficheiro volta a ser copiado com o nome novo, nada se perde)
@@ -616,13 +620,19 @@ export async function planear(opcoes = {}) {
   const nApagarOutros = nApagar - nRenomeados
   const nNoDisco = noDestino.ficheiros.filter((x) => !x.ligacao && !eLixoDoSistema(x.nome)).length + blocosNoDestino.length
   const motivosConfirmacao = []
+  const motivosConfirmacaoT = []
+  const motivar = (x) => (motivosConfirmacao.push(x.msg), motivosConfirmacaoT.push(x))
   if (nApagarOutros > MINIMO_FORTE && nApagarOutros > PROPORCAO_FORTE * nNoDisco)
-    motivosConfirmacao.push(`Vai apagar do disco ${nApagarOutros.toLocaleString('pt-PT')} dos ${nNoDisco.toLocaleString('pt-PT')} ficheiros que lá estão (mais de 10 %${nRenomeados ? ', sem contar os que só mudaram de nome' : ''}).`)
-  if (!origemAcessivel) motivosConfirmacao.push(`A pasta da biblioteca não se consegue ler ou está vazia (${origem}): as fontes ficariam sem ficheiros.`)
+    motivar(
+      nRenomeados
+        ? m('Vai apagar do disco {n} dos {total} ficheiros que lá estão (mais de 10 %, sem contar os que só mudaram de nome).', { n: nApagarOutros.toLocaleString('pt-PT'), total: nNoDisco.toLocaleString('pt-PT') })
+        : m('Vai apagar do disco {n} dos {total} ficheiros que lá estão (mais de 10 %).', { n: nApagarOutros.toLocaleString('pt-PT'), total: nNoDisco.toLocaleString('pt-PT') })
+    )
+  if (!origemAcessivel) motivar(m('A pasta da biblioteca não se consegue ler ou está vazia ({origem}): as fontes ficariam sem ficheiros.', { origem }))
   if (fichasEmFalta.size > MINIMO_FORTE && fichasEmFalta.size > PROPORCAO_FORTE * fichasComFicheiro.size)
-    motivosConfirmacao.push(`${fichasEmFalta.size.toLocaleString('pt-PT')} das ${fichasComFicheiro.size.toLocaleString('pt-PT')} fontes com ficheiro têm o ficheiro em falta na biblioteca (mais de 10 %): o disco está bem ligado?`)
+    motivar(m('{n} das {total} fontes com ficheiro têm o ficheiro em falta na biblioteca (mais de 10 %): o disco está bem ligado?', { n: fichasEmFalta.size.toLocaleString('pt-PT'), total: fichasComFicheiro.size.toLocaleString('pt-PT') }))
   const precisaConfirmacaoForte = motivosConfirmacao.length > 0 && nApagarOutros > 0
-  for (const m of motivosConfirmacao) avisos.push(m)
+  for (const x of motivosConfirmacaoT) avisar(x)
 
   return {
     formato: FORMATO,
@@ -635,6 +645,7 @@ export async function planear(opcoes = {}) {
     amostraSobreCompleta,
     precisaConfirmacaoForte,
     motivosConfirmacao,
+    motivosConfirmacao_t: motivosConfirmacaoT,
     sistema,
     livre,
     mesmoDisco,
@@ -656,6 +667,7 @@ export async function planear(opcoes = {}) {
     invalidos,
     maiusculas,
     avisos,
+    avisos_t: avisosT,
     contagens: {
       fichas: fichas.length,
       notas: notas.length,
@@ -709,6 +721,14 @@ export function tamanho(b) {
 
 // ---------- aplicar ----------
 
+// Os motivos de confirmação numa só mensagem («motivo1 motivo2»), com o mesmo texto de plano.motivosConfirmacao.join(' ')
+function juntarMotivos(plano) {
+  const lista = plano.motivosConfirmacao_t
+  if (!Array.isArray(lista) || lista.length !== plano.motivosConfirmacao.length || !lista.length) return plano.motivosConfirmacao.join(' ')
+  return lista.reduce((a, b) => m('{a} {b}', { a, b }))
+}
+
+
 // Cria as pastas por baixo da raiz, recusando ligações simbólicas pelo caminho
 async function pastaSegura(raiz, rel, feitas) {
   let atual = raiz
@@ -716,7 +736,7 @@ async function pastaSegura(raiz, rel, feitas) {
     atual = path.join(atual, parte)
     if (feitas.has(atual)) continue
     const st = await lstat(atual)
-    if (st?.isSymbolicLink() || (st && !st.isDirectory())) throw new Error(`No destino, ${atual} não é uma pasta normal.`)
+    if (st?.isSymbolicLink() || (st && !st.isDirectory())) throw erro('No destino, {caminho} não é uma pasta normal.', { caminho: atual })
     if (!st) await fsp.mkdir(atual)
     feitas.add(atual)
   }
@@ -726,7 +746,7 @@ async function pastaSegura(raiz, rel, feitas) {
 // O nome final tem de ser um ficheiro normal ou ainda não existir (nunca uma ligação simbólica nem uma pasta)
 async function alvoNormal(alvo) {
   const st = await lstat(alvo)
-  if (st && !st.isFile()) throw new Error(`No destino, ${alvo} não é um ficheiro normal (ligação ou pasta): recusado.`)
+  if (st && !st.isFile()) throw erro('No destino, {caminho} não é um ficheiro normal (ligação ou pasta): recusado.', { caminho: alvo })
 }
 
 // Escreve «….parcial» de novo (uma sobra com esse nome — ou uma ligação simbólica plantada — apaga-se sem a seguir;
@@ -750,7 +770,7 @@ async function copiarFicheiro(de, alvo, modificado, clonar) {
   // atributos estendidos, que no exFAT viram ficheiros «._…» e podem trazer a origem das descargas).
   if (clonar) await new Promise((ok, falha) => execFile('/bin/cp', ['-c', de, tmp], (e, _, erro) => (e ? falha(new Error(String(erro || e.message).trim())) : ok())))
   else await pipeline(fs.createReadStream(de, { highWaterMark: 1 << 20 }), fs.createWriteStream(tmp, { flags: 'wx' }))
-  if (!(await lstat(tmp))?.isFile()) throw new Error(`No destino, ${tmp} não é um ficheiro normal: recusado.`)
+  if (!(await lstat(tmp))?.isFile()) throw erro('No destino, {caminho} não é um ficheiro normal: recusado.', { caminho: tmp })
   const t = new Date(modificado)
   await fsp.utimes(tmp, t, t)
   await fsp.rename(tmp, alvo)
@@ -794,7 +814,6 @@ async function semLigacoesAte(destino, rel, vistas) {
   return true
 }
 
-const erroCom = (codigo, mensagem) => Object.assign(new Error(mensagem), { codigo })
 
 const processoVivo = (pid) => {
   try {
@@ -835,11 +854,13 @@ export async function tomarBloqueio(destino) {
       : !st?.isFile() || Date.now() - st.mtimeMs > 60000
     if (!velho) {
       const desde = outro?.inicio ? new Date(outro.inicio).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : 'há instantes'
-      throw erroCom('bloqueado', `Já está a ser feita outra cópia neste disco (desde ${desde}${outro?.maquina && outro.maquina !== os.hostname() ? `, no computador ${outro.maquina}` : ''}). Espere que acabe e tente outra vez.`)
+      throw outro?.maquina && outro.maquina !== os.hostname()
+        ? erro('Já está a ser feita outra cópia neste disco (desde {desde}, no computador {maquina}). Espere que acabe e tente outra vez.', { desde, maquina: outro.maquina }, { codigo: 'bloqueado' })
+        : erro('Já está a ser feita outra cópia neste disco (desde {desde}). Espere que acabe e tente outra vez.', { desde }, { codigo: 'bloqueado' })
     }
     await fsp.rm(f, { force: true })
   }
-  throw erroCom('bloqueado', 'Já está a ser feita outra cópia neste disco. Espere que acabe e tente outra vez.')
+  throw erro('Já está a ser feita outra cópia neste disco. Espere que acabe e tente outra vez.', undefined, { codigo: 'bloqueado' })
 }
 
 // opcoes: aoProgresso({ fase, feitos, total, bytes, bytesTotal }), sinal (AbortSignal), registos (pasta das listas),
@@ -849,34 +870,34 @@ export async function tomarBloqueio(destino) {
 export async function aplicar(plano, opcoes = {}) {
   const aviso = opcoes.aoProgresso || (() => {})
   const parar = () => {
-    if (opcoes.sinal?.aborted) throw new Error('Exportação interrompida.')
+    if (opcoes.sinal?.aborted) throw erro('Exportação interrompida.')
   }
   const inicio = Date.now()
   // (o destino pode ter mudado desde o plano)
   const { destino, marca: marcaAtual } = await verificarDestino(plano.destino, plano.origem, plano.base)
   // Guardas: nenhuma escreve nada; se uma falhar, o disco fica como estava
   if (plano.amostra && marcaAtual && marcaAtual.amostra !== true)
-    throw erroCom('amostra-sobre-completa', 'Esta pasta tem uma cópia completa: uma amostra não a pode actualizar (apagaria o resto). Nada foi alterado: use outra pasta para a amostra.')
+    throw erro('Esta pasta tem uma cópia completa: uma amostra não a pode actualizar (apagaria o resto). Nada foi alterado: use outra pasta para a amostra.', undefined, { codigo: 'amostra-sobre-completa' })
   const nApagar = plano.apagar.length + plano.blocosApagar.length
   if (opcoes.maxApagar != null && nApagar > opcoes.maxApagar) {
     // (a mais só se tolera o que é mudança de nome: um ficheiro de uma ficha que continua na cópia com outro ficheiro a copiar)
     const outros = nApagar - plano.apagar.filter((x) => x.renomeado).length
     const limite = opcoes.maxApagarOutros != null ? opcoes.maxApagarOutros : opcoes.maxApagar
     if (outros > limite)
-      throw erroCom('mais-apagar', `O plano apaga agora ${nApagar} ficheiros do disco, mais do que os ${opcoes.maxApagar} que a simulação mostrou. Nada foi alterado: veja outra vez o que vai mudar.`)
+      throw erro('O plano apaga agora {n} ficheiros do disco, mais do que os {maximo} que a simulação mostrou. Nada foi alterado: veja outra vez o que vai mudar.', { n: nApagar, maximo: opcoes.maxApagar }, { codigo: 'mais-apagar' })
   }
   if (plano.precisaConfirmacaoForte && !(opcoes.confirmarApagar != null && [nApagar, opcoes.maxApagar].includes(Number(opcoes.confirmarApagar))))
-    throw erroCom('confirmar-apagar', `Esta actualização apaga ${nApagar} ficheiros do disco e precisa de confirmação: ${plano.motivosConfirmacao.join(' ')} Nada foi alterado.`)
+    throw erro('Esta actualização apaga {n} ficheiros do disco e precisa de confirmação: {motivos} Nada foi alterado.', { n: nApagar, motivos: juntarMotivos(plano) }, { codigo: 'confirmar-apagar' })
   // (a biblioteca tem de continuar ali e legível antes de se apagar o que quer que seja)
   try {
     await fsp.access(plano.origem, fs.constants.R_OK)
     await fsp.readdir(plano.origem)
   } catch {
-    throw erroCom('origem-inacessivel', `A pasta da biblioteca não se consegue ler (${plano.origem}). Nada foi alterado.`)
+    throw erro('A pasta da biblioteca não se consegue ler ({origem}). Nada foi alterado.', { origem: plano.origem }, { codigo: 'origem-inacessivel' })
   }
   if (!plano.clonar) {
     const sf = await fsp.statfs(fs.existsSync(destino) ? destino : path.dirname(destino))
-    if (plano.contagens.necessario > sf.bavail * sf.bsize) throw new Error(`Espaço insuficiente no destino: precisa de ${tamanho(plano.contagens.necessario)}, livre ${tamanho(sf.bavail * sf.bsize)}.`)
+    if (plano.contagens.necessario > sf.bavail * sf.bsize) throw erro('Espaço insuficiente no destino: precisa de {precisa}, livre {livre}.', { precisa: tamanho(plano.contagens.necessario), livre: tamanho(sf.bavail * sf.bsize) })
   }
   if (!fs.existsSync(destino)) await fsp.mkdir(destino)
   const soltar = await tomarBloqueio(destino)
@@ -897,7 +918,9 @@ async function aplicarComBloqueio(plano, opcoes, destino, marcaAtual, aviso, par
   const guardarMarca = () => escreverAtomico(destino, MARCA, JSON.stringify(marca, null, 1), feitas)
   await guardarMarca()
   const erros = []
+  const errosT = []
   const linhas = []
+  const falhou = (x) => (erros.push(x.msg), errosT.push(x))
 
   // 1. Apagar o que já não pertence a nenhuma ficha (só em biblioteca/ e dados/texto/) e o lixo (sem o seguir)
   const aApagar = [...plano.apagar, ...plano.blocosApagar]
@@ -921,7 +944,7 @@ async function aplicarComBloqueio(plano, opcoes, destino, marcaAtual, aviso, par
       delete marca.ficheiros[nfc(x.rel.replace(/^biblioteca\//, ''))]
       delete marca.blocos[x.rel.replace(/^dados\/texto\//, '')]
     } catch (e) {
-      erros.push(`apagar ${x.rel}: ${e.message}`)
+      falhou(m('apagar {rel}: {erro}', { rel: x.rel, erro: traduzivel(e) }))
     }
     if (!x.lixo) aviso({ fase: 'apagar', feitos: i + 1, total: aApagar.length })
   }
@@ -949,7 +972,7 @@ async function aplicarComBloqueio(plano, opcoes, destino, marcaAtual, aviso, par
     } catch (e) {
       falhados.add(x.caminho)
       delete marca.ficheiros[x.caminho]
-      erros.push(`copiar ${x.caminho}: ${e.message}`)
+      falhou(m('copiar {caminho}: {erro}', { caminho: x.caminho, erro: traduzivel(e) }))
       linhas.push(`ERRO  ${x.caminho}: ${e.message}`)
     }
     aviso({ fase: 'copiar', feitos: i + 1, total: plano.copiar.length, bytes, bytesTotal })
@@ -983,7 +1006,7 @@ async function aplicarComBloqueio(plano, opcoes, destino, marcaAtual, aviso, par
       marca.blocos[b.nome] = h
       blocosFeitos.add(b.n)
     } catch (e) {
-      erros.push(`texto ${b.nome}: ${e.message}`)
+      falhou(m('texto {nome}: {erro}', { nome: b.nome, erro: traduzivel(e) }))
     }
   }
 
@@ -1012,7 +1035,7 @@ async function aplicarComBloqueio(plano, opcoes, destino, marcaAtual, aviso, par
       const antigo = await fsp.readFile(path.join(destino, p.para)).catch(() => null)
       if (!antigo || !antigo.equals(novo)) await escreverAtomico(destino, p.para, novo, feitas)
     } catch (e) {
-      erros.push(`página ${p.para}: ${e.message}`)
+      falhou(m('página {pagina}: {erro}', { pagina: p.para, erro: traduzivel(e) }))
     }
   }
   const d = new Date()
@@ -1046,6 +1069,7 @@ async function aplicarComBloqueio(plano, opcoes, destino, marcaAtual, aviso, par
     apagados,
     blocosEscritos,
     erros,
+    erros_t: errosT,
     segundos: Math.round((Date.now() - inicio) / 100) / 10,
   }
   resultado.registo = escreverRegisto(plano, { ...resultado, linhas }, opcoes.registos)
@@ -1111,7 +1135,7 @@ export function escreverRegisto(plano, resultado, pasta) {
 
 // Uso pelo serviço (botão das Definições): --json escreve um objecto JSON por linha no stdout
 //   {tipo:'progresso', fase, feitos, total, bytes, bytesTotal} · {tipo:'plano', resumo, contagens, avisos, apagar (os 100 primeiros), nApagar…}
-//   {tipo:'fim', …} · {tipo:'erro', mensagem, codigo}
+//   {tipo:'fim', …} · {tipo:'erro', mensagem, chave, vars, codigo}
 // SIGTERM interrompe com cuidado (acaba o ficheiro que está a copiar e guarda a marca: a próxima vez continua);
 // --vigiar-stdin faz o mesmo quando quem o lançou desaparece (o serviço fecha o tubo).
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -1166,6 +1190,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         clonar: plano.clonar,
         resumo: resumo(plano),
         avisos: plano.avisos,
+        avisos_t: plano.avisos_t,
         contagens: plano.contagens,
         apagar: aApagar.slice(0, 100).map((x) => x.rel),
         nApagar: aApagar.length,
@@ -1174,6 +1199,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         amostraSobreCompleta: plano.amostraSobreCompleta,
         precisaConfirmacaoForte: plano.precisaConfirmacaoForte,
         motivosConfirmacao: plano.motivosConfirmacao,
+        motivosConfirmacao_t: plano.motivosConfirmacao_t,
         registo: aplicarJa ? null : escreverRegisto(plano, null, opcoes.registos),
       })
       if (!aplicarJa) {
@@ -1194,7 +1220,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
           emitir({ tipo: 'progresso', ...p })
         },
       })
-      await emitir({ tipo: 'fim', copiados: r.copiados, bytes: r.bytes, apagados: r.apagados, blocosEscritos: r.blocosEscritos, nErros: r.erros.length, erros: r.erros.slice(0, 20), segundos: r.segundos, registo: r.registo })
+      await emitir({ tipo: 'fim', copiados: r.copiados, bytes: r.bytes, apagados: r.apagados, blocosEscritos: r.blocosEscritos, nErros: r.erros.length, erros: r.erros.slice(0, 20), erros_t: r.erros_t.slice(0, 20), segundos: r.segundos, registo: r.registo })
       process.exit(0)
     }
     console.log(`Cópia de leitura do TINCTORIS — ${aplicarJa ? 'A APLICAR' : 'SIMULAÇÃO (nada foi escrito no destino)'}`)
@@ -1223,7 +1249,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     }
   } catch (e) {
     if (modoJson) {
-      await emitir({ tipo: 'erro', mensagem: e.message, codigo: e.codigo || (ctl.signal.aborted ? 'interrompido' : '') })
+      await emitir({ tipo: 'erro', mensagem: e.message, ...(e.chave ? { chave: e.chave, vars: e.vars } : {}), codigo: e.codigo || (ctl.signal.aborted ? 'interrompido' : '') })
       process.exit(1)
     } else {
       console.error(`Erro: ${e.message}`)

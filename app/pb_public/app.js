@@ -40,6 +40,26 @@ function tr(texto, vars) {
   return s
 }
 
+// Mensagem vinda do serviço de fundo: { msg, chave, vars } (worker/src/mensagens.js) → texto no idioma da interface.
+// Sem chave (versões antigas do serviço, erros de outros programas), fica o texto que veio. Um valor pode ser outra
+// mensagem (ex.: o erro dentro de «Reanálise: {erro}»), traduzida à parte.
+function trMsg(x) {
+  if (x === null || x === undefined) return ''
+  if (typeof x !== 'object') return String(x)
+  if (!x.chave) return String(x.msg ?? '')
+  const vars = {}
+  for (const [k, v] of Object.entries(x.vars || {})) vars[k] = v && typeof v === 'object' ? trMsg(v) : v
+  return tr(x.chave, vars)
+}
+
+// Campo de estado de um trabalho do serviço (fase, avisos, erros…): usa <campo>_t (traduzível) quando existe.
+function trCampo(obj, campo) {
+  const t = obj?.[campo + '_t']
+  if (Array.isArray(t)) return t.map(trMsg)
+  if (t) return trMsg(t)
+  return obj?.[campo]
+}
+
 // Número com separadores do idioma (1 234 / 1,234).
 const numTxt = (n, opcoes) => Number(n || 0).toLocaleString(LOCALE, opcoes)
 
@@ -156,7 +176,15 @@ function mensagemErro(e) {
     const campos = Object.entries(d).map(([k, v]) => `${k}: ${v.message || v}`).join('; ')
     if (campos) return campos
   }
-  return e?.response?.erro || e?.response?.message || e?.message || String(e)
+  const r = e?.response
+  if (r?.erro_chave) return trMsg({ msg: r.erro, chave: r.erro_chave, vars: r.vars })
+  // (mensagens fixas dos hooks e do PocketBase: o próprio texto é a chave)
+  return tr(r?.erro || r?.message || e?.message || String(e))
+}
+
+// Texto do erro em português, tal como veio (para reconhecer erros conhecidos, em qualquer idioma da interface).
+function erroOriginal(e) {
+  return String(e?.response?.erro || e?.response?.message || e?.message || e)
 }
 
 function atraso(fn, ms) {
@@ -333,7 +361,7 @@ async function ecraEntrada() {
 // ---------------------------------------------------------------------------
 // Estrutura da aplicação
 
-const VERSAO = '0.10.0-beta'
+const VERSAO = '0.11.0-beta'
 const REPOSITORIO = 'https://github.com/tinctoris-db/tinctoris'
 
 const VISTAS = {
@@ -465,7 +493,7 @@ function secaoEspaco() {
       e = await servico('espaco-duplicados')
     } catch (err) {
       caixa.innerHTML = ''
-      anexar(caixa, h('h3', { style: 'margin-top:0' }, tr('Espaço ocupado pelos duplicados')), /desconhecida/i.test(mensagemErro(err)) ? tr('Esta parte fica activa depois de reiniciar o TINCTORIS (fechar a janela do Terminal e abrir «Iniciar TINCTORIS»).') : tr('O serviço de fundo não respondeu: {erro}', { erro: mensagemErro(err) }))
+      anexar(caixa, h('h3', { style: 'margin-top:0' }, tr('Espaço ocupado pelos duplicados')), /desconhecida/i.test(erroOriginal(err)) ? tr('Esta parte fica activa depois de reiniciar o TINCTORIS (fechar a janela do Terminal e abrir «Iniciar TINCTORIS»).') : tr('O serviço de fundo não respondeu: {erro}', { erro: mensagemErro(err) }))
       return
     }
     espacoDup = e
@@ -480,7 +508,7 @@ function secaoEspaco() {
     if (e.a_verificar) {
       const a = e.a_verificar
       const pct = a.total ? Math.round((100 * a.feitos) / a.total) : 0
-      anexar(caixa, h('div', {}, `${tr('A verificar:')} ${a.fase}… ${a.total ? tr('{feitos} de {total}', { feitos: numTxt(a.feitos), total: numTxt(a.total) }) : ''}`), h('div', { class: 'progresso' }, h('div', { style: `width:${pct}%` })))
+      anexar(caixa, h('div', {}, `${tr('A verificar:')} ${trCampo(a, 'fase')}… ${a.total ? tr('{feitos} de {total}', { feitos: numTxt(a.feitos), total: numTxt(a.total) }) : ''}`), h('div', { class: 'progresso' }, h('div', { style: `width:${pct}%` })))
       temporizador = setTimeout(() => vistaAtual() === 'duplicados' && desenhar(), 3000)
       return
     }
@@ -1151,7 +1179,7 @@ async function apagarSelecionadas(depois) {
     }
   } catch (e) {
     const m = mensagemErro(e)
-    toast(/Acção desconhecida/.test(m) ? tr('Esta função só fica activa depois de reiniciar o TINCTORIS.') : tr('Erro: {erro}', { erro: m }) + (apagadas ? ' ' + tr('({n} já apagadas)', { n: apagadas }) : ''), true)
+    toast(/Acção desconhecida/.test(erroOriginal(e)) ? tr('Esta função só fica activa depois de reiniciar o TINCTORIS.') : tr('Erro: {erro}', { erro: m }) + (apagadas ? ' ' + tr('({n} já apagadas)', { n: apagadas }) : ''), true)
     if (!apagadas) return
   }
   const aProcessar = saltadas.filter((x) => x.motivo === 'a processar').length
@@ -1280,7 +1308,7 @@ async function editarSelecionadas(depois) {
       }
     } catch (e) {
       const m = mensagemErro(e)
-      toast(/Acção desconhecida/.test(m) ? tr('Esta função só fica activa depois de reiniciar o TINCTORIS.') : mudadas ? tr('Erro: {m} ({n} já mudadas)', { m, n: numTxt(mudadas) }) : tr('Erro: {m}', { m }), true)
+      toast(/Acção desconhecida/.test(erroOriginal(e)) ? tr('Esta função só fica activa depois de reiniciar o TINCTORIS.') : mudadas ? tr('Erro: {m} ({n} já mudadas)', { m, n: numTxt(mudadas) }) : tr('Erro: {m}', { m }), true)
       if (!mudadas) return
     }
     const aProcessar = saltadas.filter((x) => x.motivo === 'a processar').length
@@ -2718,7 +2746,7 @@ async function vistaImportar() {
         h('h3', { style: 'margin-top:0' }, e.terminado ? tr('Importação concluída') : tr('A importar…')),
         h('div', { class: 'progresso', style: 'margin:8px 0' }, h('div', { style: `width:${pct}%` })),
         h('p', {}, tr('{feitas} de {total} referências processadas · {criadas} fontes novas', { feitas: numTxt(e.feitas), total: numTxt(e.total), criadas: numTxt(e.criadas) }) + (e.completadas ? tr(' · {n} completadas online', { n: numTxt(e.completadas) }) : '') + (e.enriquecidas ? tr(' · {n} já existentes completadas com os dados do ficheiro', { n: numTxt(e.enriquecidas) }) : '') + (e.notas ? tr(' · {n} notas', { n: numTxt(e.notas) }) : '') + (e.ficheiros ? tr(' · {n} ficheiros', { n: numTxt(e.ficheiros) }) : '')),
-        e.erros.length ? h('details', {}, h('summary', {}, tr('{n} problema(s)', { n: numTxt(e.erros.length) })), h('div', { class: 'registo' }, e.erros.slice(0, 200).map((x) => h('div', { class: 'erro' }, x)))) : null,
+        e.erros.length ? h('details', {}, h('summary', {}, tr('{n} problema(s)', { n: numTxt(e.erros.length) })), h('div', { class: 'registo' }, trCampo(e, 'erros').slice(0, 200).map((x) => h('div', { class: 'erro' }, x)))) : null,
         e.terminado
           ? h('div', { class: 'linha-flex', style: 'margin-top:12px' }, h('a', { class: 'botao primario', href: '#/fontes' }, tr('Ver as fontes')), h('a', { class: 'botao', href: '#/rever' }, tr('Ver as que estão por rever')))
           : h('p', { class: 'ajuda' }, tr('Pode continuar a usar a biblioteca enquanto a importação decorre.'))
@@ -3096,7 +3124,7 @@ function vistaAtividade() {
       h('h2', {}, tr('Pastas')),
       h('div', { class: 'caixa' }, h('div', {}, h('strong', {}, tr('Entrada (watch folder): ')), e.pastas.watch_folder), h('div', {}, h('strong', {}, tr('Biblioteca organizada: ')), e.pastas.biblioteca)),
       h('h2', {}, tr('Registo')),
-      h('div', { class: 'caixa registo' }, e.eventos.length ? e.eventos.map((ev) => h('div', { class: ev.nivel }, new Date(ev.quando).toLocaleTimeString(LOCALE), ' — ', ev.msg)) : h('div', {}, tr('Sem actividade desde o arranque.')))
+      h('div', { class: 'caixa registo' }, e.eventos.length ? e.eventos.map((ev) => h('div', { class: ev.nivel }, new Date(ev.quando).toLocaleTimeString(LOCALE), ' — ', trMsg(ev))) : h('div', {}, tr('Sem actividade desde o arranque.')))
     )
   }
   atualizar()
@@ -3345,6 +3373,72 @@ function previsaoNome(padrao, pastas) {
 
 // Cópia de leitura num disco externo: uma cópia só de leitura da biblioteca, que abre em qualquer computador.
 // O serviço corre o exportador à parte; aqui escolhe-se o destino, vê-se o que vai mudar e acompanha-se a cópia.
+// Definições → «A sua conta»: o email e mudar a palavra-passe (pedido do Pedro, 12/10/2026). A palavra-passe nunca se
+// mostra (a base só guarda uma versão baralhada); neste Mac muda-se sem a antiga, noutro aparelho pede-a primeiro.
+function secaoConta() {
+  const email = pb.authStore.record?.email || ''
+  return [
+    h('h2', {}, tr('A sua conta')),
+    h(
+      'div',
+      { class: 'caixa' },
+      email ? h('p', { style: 'margin-top:0' }, tr('Email da conta:'), ' ', h('strong', {}, email)) : null,
+      h('p', { class: 'ajuda' }, tr('A palavra-passe serve para entrar a partir de outros aparelhos (iPad, telemóvel, outro computador). Neste Mac a biblioteca entra sem a pedir. Por segurança ninguém a pode ver, mas pode mudá-la aqui.')),
+      h('button', { class: 'botao', onclick: mudarPalavraPasse }, tr('Mudar a palavra-passe…'))
+    ),
+  ]
+}
+
+async function mudarPalavraPasse() {
+  let info = {}
+  try {
+    info = await pb.send('/api/bib/conta-estado', {})
+  } catch (_) {}
+  const nesteMac = !!info.paginaLocal
+  const atual = h('input', { type: 'password', autocomplete: 'current-password' })
+  const nova = h('input', { type: 'password', autocomplete: 'new-password', minlength: 8 })
+  const repetir = h('input', { type: 'password', autocomplete: 'new-password', minlength: 8 })
+  const erro = h('div', { class: 'mensagem-erro' })
+  const gravar = async () => {
+    erro.textContent = ''
+    if (!nesteMac && !atual.value) return (erro.textContent = tr('Escreva a palavra-passe actual.'))
+    if (nova.value.length < 8) return (erro.textContent = tr('A palavra-passe nova tem de ter pelo menos 8 caracteres.'))
+    if (nova.value !== repetir.value) return (erro.textContent = tr('As duas palavras-passe novas não são iguais.'))
+    let r
+    try {
+      r = await pb.send('/api/bib/mudar-palavra-passe', { method: 'POST', body: { atual: atual.value, nova: nova.value } })
+    } catch (e) {
+      return (erro.textContent = tr(mensagemErro(e)))
+    }
+    // (a sessão deste aparelho também deixou de valer: entra-se outra vez, já com a nova)
+    try {
+      if (r.local) {
+        const s = await pb.send('/api/bib/sessao-local', { method: 'POST' })
+        pb.authStore.save(s.token, s.record)
+      } else await pb.collection('_superusers').authWithPassword(r.email, nova.value)
+    } catch (_) {
+      fecharPainel()
+      toast(tr('Palavra-passe mudada. Entre outra vez com a nova.'))
+      return setTimeout(() => location.reload(), 1500)
+    }
+    fecharPainel()
+    toast(tr('Palavra-passe mudada. Nos outros aparelhos, entre com a nova.'))
+  }
+  abrirPainel({
+    topo: h('strong', {}, tr('Mudar a palavra-passe')),
+    corpo: h(
+      'div',
+      {},
+      nesteMac ? h('p', { class: 'ajuda' }, tr('Neste Mac não é preciso escrever a palavra-passe actual.')) : campo(tr('Palavra-passe actual'), atual),
+      campo(tr('Palavra-passe nova (mínimo 8 caracteres)'), nova),
+      campo(tr('Repita a palavra-passe nova'), repetir),
+      h('p', { class: 'ajuda' }, tr('Os outros aparelhos onde já tinha entrado vão pedir a palavra-passe nova.')),
+      erro
+    ),
+    rodape: [h('button', { class: 'botao', onclick: () => fecharPainel() }, tr('Cancelar')), h('button', { class: 'botao primario', onclick: gravar }, tr('Mudar a palavra-passe'))],
+  })
+}
+
 function secaoCopiaLeitura() {
   const caixa = h('div', { class: 'caixa' })
   const bloco = h('div', { style: 'display:none' }, h('h2', {}, tr('Cópia de leitura (disco externo)')), caixa)
@@ -3411,7 +3505,7 @@ function secaoCopiaLeitura() {
     const texto = tr('Actualizar a cópia de leitura em:\n{destino}\n\nVai copiar {n} ficheiros ({tamanho})', { destino: e.destino, n: numTxt(c.copiar), tamanho: tamanhoTxt(c.bytesCopiar) }) + (nApagar ? tr(' e apagar {n} do disco (já não estão na biblioteca).', { n: numTxt(nApagar) }) : '.') + tr('\n\nPode parar a qualquer momento: da vez seguinte continua onde ficou.')
     // (apaga muito, ou a biblioteca parece desligada: como em «Apagar as seleccionadas», escreve-se o número)
     if (e.plano.precisaConfirmacaoForte) {
-      const r = prompt(`${texto}\n\n${tr('ATENÇÃO: {motivos}', { motivos: (e.plano.motivosConfirmacao || []).join(' ') })}\n\n${tr('Para confirmar, escreva o número de ficheiros a apagar do disco ({n}):', { n: nApagar })}`)
+      const r = prompt(`${texto}\n\n${tr('ATENÇÃO: {motivos}', { motivos: (trCampo(e.plano, 'motivosConfirmacao') || []).join(' ') })}\n\n${tr('Para confirmar, escreva o número de ficheiros a apagar do disco ({n}):', { n: nApagar })}`)
       if (r == null) return
       if (r.trim() !== String(nApagar)) return toast(tr('Nada foi alterado.'))
       return pedir('exportar-leitura-aplicar', { confirmarApagar: nApagar })
@@ -3428,7 +3522,7 @@ function secaoCopiaLeitura() {
     if (c.fichasEmFalta) linhas.push(h('p', { class: 'ajuda' }, tr('{n} fontes têm ficheiros em falta na biblioteca: saem sem eles.', { n: numTxt(c.fichasEmFalta) })))
     if (pl.exportadoAntes) linhas.push(h('p', { class: 'ajuda' }, tr('Última actualização desta cópia: {data}.', { data: new Date(pl.exportadoAntes).toLocaleString(LOCALE) })))
     if (pl.precisaConfirmacaoForte) linhas.push(h('p', { style: 'margin:6px 0 0;color:var(--erro)' }, h('strong', {}, tr('Precisa de confirmação: ')), tr('ao carregar em «Actualizar a cópia» vai ter de escrever o número de ficheiros a apagar ({n}).', { n: numTxt(pl.nApagar) })))
-    for (const a of pl.avisos || []) linhas.push(h('p', { style: 'margin:6px 0 0;color:var(--erro)' }, a))
+    for (const a of trCampo(pl, 'avisos') || []) linhas.push(h('p', { style: 'margin:6px 0 0;color:var(--erro)' }, a))
     if (pl.nApagar) {
       const mais = pl.nApagar - pl.apagar.length
       linhas.push(
@@ -3481,7 +3575,7 @@ function secaoCopiaLeitura() {
         }
         if (e.a_parar) linha = tr('A parar: a acabar o ficheiro em curso…')
         anexar(dinamico, h('div', {}, a + linha), pct !== null ? barra(pct) : null)
-        if (e.estado === 'a_copiar' && e.plano?.avisos?.length) e.plano.avisos.forEach((x) => anexar(dinamico, h('p', { style: 'margin:4px 0;color:var(--erro)' }, x)))
+        if (e.estado === 'a_copiar' && e.plano?.avisos?.length) trCampo(e.plano, 'avisos').forEach((x) => anexar(dinamico, h('p', { style: 'margin:4px 0;color:var(--erro)' }, x)))
         temporizador = setTimeout(async () => ((await ler()) ? desenhar() : null), 1500)
       } else if (e.estado === 'simulado' && e.plano) {
         anexar(dinamico, h('p', { style: 'margin:0 0 6px' }, h('strong', {}, tr('O que vai mudar em ')), e.destino), resumoDoPlano(e.plano))
@@ -3492,7 +3586,7 @@ function secaoCopiaLeitura() {
           dinamico,
           h('p', { style: 'margin:0 0 4px' }, h('strong', {}, tr('Cópia actualizada. ')), tr('{copiados} ficheiros copiados ({tamanho}), {apagados} apagados do disco, em {segundos} s.', { copiados: numTxt(r.copiados), tamanho: tamanhoTxt(r.bytes), apagados: numTxt(r.apagados), segundos: numTxt(r.segundos) })),
           h('p', { class: 'ajuda' }, tr('Para abrir: duplo clique em «Abrir TINCTORIS.html» na pasta {destino} (Mac ou Windows, sem internet).', { destino: e.destino })),
-          r.nErros ? h('details', { open: true }, h('summary', { style: 'color:var(--erro)' }, tr('{n} problema(s)', { n: numTxt(r.nErros) })), h('div', { class: 'registo' }, r.erros.map((x) => h('div', { class: 'erro' }, x)))) : null,
+          r.nErros ? h('details', { open: true }, h('summary', { style: 'color:var(--erro)' }, tr('{n} problema(s)', { n: numTxt(r.nErros) })), h('div', { class: 'registo' }, trCampo(r, 'erros').map((x) => h('div', { class: 'erro' }, x)))) : null,
           h('p', { class: 'ajuda' }, tr('Lista do que foi feito: {registo}', { registo: r.registo }))
         )
       } else if (e.estado === 'parado_pelo_utilizador') {
@@ -3501,7 +3595,7 @@ function secaoCopiaLeitura() {
         anexar(dinamico, h('p', { style: 'margin:0' }, (antes ? tr('Parado: nada foi alterado no disco.') : tr('A cópia foi parada.')) + f), h('p', { class: 'ajuda' }, antes ? tr('Carregue em «Ver o que vai mudar» quando quiser recomeçar.') : tr('Carregue em «Ver o que vai mudar» e depois em «Actualizar a cópia»: continua onde ficou, sem voltar a copiar o que já está.')))
       } else if (e.estado === 'erro') {
         const verDeNovo = ['mais-apagar', 'confirmar-apagar', 'bloqueado', 'origem-inacessivel'].includes(e.erro?.codigo)
-        anexar(dinamico, h('p', { class: 'mensagem-erro', style: 'margin:0' }, e.erro?.mensagem || tr('Não foi possível fazer a cópia.')), verDeNovo ? h('p', { class: 'ajuda' }, tr('Carregue em «Ver o que vai mudar» para ver a lista actual.')) : null)
+        anexar(dinamico, h('p', { class: 'mensagem-erro', style: 'margin:0' }, trCampo(e.erro, 'mensagem') || tr('Não foi possível fazer a cópia.')), verDeNovo ? h('p', { class: 'ajuda' }, tr('Carregue em «Ver o que vai mudar» para ver a lista actual.')) : null)
       }
     }
   }
@@ -3585,6 +3679,7 @@ async function vistaDefinicoes() {
       h('label', { class: 'linha-flex', style: 'margin:12px 0 0' }, soLocal, tr('Abrir só neste Mac (recomendado em redes partilhadas, como a da escola)')),
       notaRede
     ),
+    secaoConta(),
     h('h2', {}, tr('Nomes e pastas dos ficheiros')),
     h(
       'div',

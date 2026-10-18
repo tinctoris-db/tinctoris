@@ -16,6 +16,7 @@ import * as imp from './importacao.js'
 import * as dup from './duplicados.js'
 import * as espaco from './espaco_duplicados.js'
 import { recentes, log } from './registo.js'
+import { m, erro, traduzivel, corpoErro } from './mensagens.js'
 import { pastasOriginais } from './juntar.js'
 import { categoriaPorExtensao } from './ficheiros.js'
 import { estadoIntensidade, mudarNivel } from './intensidade.js'
@@ -86,7 +87,7 @@ const ROTAS = {
   'POST rede': async (b) => {
     if (b.so_local) fs.writeFileSync(FICHEIRO_SO_LOCAL, 'Criado em Definições: o TINCTORIS só abre neste Mac.\n')
     else fs.rmSync(FICHEIRO_SO_LOCAL, { force: true })
-    log.info(b.so_local ? 'Acesso: só neste Mac (ao reiniciar).' : 'Acesso: também noutros aparelhos da rede (ao reiniciar).')
+    log.info(b.so_local ? m('Acesso: só neste Mac (ao reiniciar).') : m('Acesso: também noutros aparelhos da rede (ao reiniciar).'))
     return { so_local: !!b.so_local }
   },
   'GET intensidade': async () => estadoIntensidade(),
@@ -116,7 +117,7 @@ const ROTAS = {
     const f = await pb.collection('fontes').getOne(b.id, { fields: 'id,metadados' })
     const pasta = pastasOriginais(f.metadados).find((p) => p === b.pasta) || pastasOriginais(f.metadados)[0]
     const abs = pasta && path.join(PASTAS.biblioteca, pasta)
-    if (!abs || !fs.existsSync(abs)) throw new Error('A pasta dos originais não foi encontrada.')
+    if (!abs || !fs.existsSync(abs)) throw erro('A pasta dos originais não foi encontrada.')
     spawn('/usr/bin/open', [abs], { detached: true, stdio: 'ignore' }).unref()
     return { ok: true }
   },
@@ -125,7 +126,7 @@ const ROTAS = {
   'POST duplicados-decidir': async (b) => {
     // (uma cópia de segurança por sessão de revisão, não uma por cada clique)
     if (b.decisao === 'manter' && Date.now() - copiaDuplicados > 30 * 60000) {
-      log.info(`Cópia de segurança criada: ${await copiaDeSeguranca('antes-juntar-duplicados')}`)
+      log.info(m('Cópia de segurança criada: {copia}', { copia: await copiaDeSeguranca('antes-juntar-duplicados') }))
       copiaDuplicados = Date.now()
     }
     return dup.decidir(b)
@@ -147,7 +148,7 @@ const ROTAS = {
   'POST exportar-leitura-parar': async () => leitura.parar(),
   'POST exportar': async (b) => {
     const ids = Array.isArray(b.ids) ? b.ids : []
-    if (!ids.length) throw new Error('Nenhuma fonte seleccionada.')
+    if (!ids.length) throw erro('Nenhuma fonte seleccionada.')
     const fontes = await fontesPorIds(ids)
     if (b.formato === 'notas-md') return exportarNotas(fontes, await notasDe(ids), b)
     return exportar(fontes, b)
@@ -162,26 +163,26 @@ const ROTAS = {
   // Vários ficheiros por fonte: juntar outras fichas a esta (os ficheiros delas passam para aqui)
   'POST juntar': async (b) => {
     // (semCopia: o comando que chama já fez uma cópia antes de juntar vários lotes seguidos)
-    if (!b.semCopia) log.info(`Cópia de segurança criada: ${await copiaDeSeguranca('antes-juntar-fichas')}`)
+    if (!b.semCopia) log.info(m('Cópia de segurança criada: {copia}', { copia: await copiaDeSeguranca('antes-juntar-fichas') }))
     return proc.juntarFichas(b.id, Array.isArray(b.ids) ? b.ids : [])
   },
   'POST separar': async (b) => proc.separarFicheiro(b.id, Number(b.indice)),
   'POST importar-analisar': async (b) => imp.analisar(String(b.texto || ''), b.nome),
   'POST importar': async (b) => {
     const copia = await copiaDeSeguranca('antes-importacao')
-    log.info(`Cópia de segurança criada: ${copia}`)
+    log.info(m('Cópia de segurança criada: {copia}', { copia }))
     return imp.importar(b.id, b.opcoes)
   },
   'POST reler-biblioteca': async () => {
     const copia = await copiaDeSeguranca('antes-releitura')
-    log.info(`Cópia de segurança criada: ${copia}`)
+    log.info(m('Cópia de segurança criada: {copia}', { copia }))
     return relerBiblioteca()
   },
   // (pedida à mão numa ficha: passa à frente de reanálises longas em curso)
   'POST reanalisar': async (b) => reanalisar(b.id, { prioritario: true }),
   'POST reanalisar-por-rever': async () => {
     const copia = await copiaDeSeguranca('antes-reanalise')
-    log.info(`Cópia de segurança criada: ${copia}`)
+    log.info(m('Cópia de segurança criada: {copia}', { copia }))
     return reanalisarPorRever()
   },
   'POST fila-retomar': async () => {
@@ -221,16 +222,16 @@ export function iniciarServidor() {
       res.writeHead(codigo, { 'Content-Type': 'application/json; charset=utf-8' })
       res.end(JSON.stringify(obj))
     }
-    if (req.headers['x-segredo'] !== chave) return responder(403, { erro: 'Acesso negado.' })
+    if (req.headers['x-segredo'] !== chave) return responder(403, corpoErro(erro('Acesso negado.')))
     const rota = ROTAS[`${req.method} ${new URL(req.url, 'http://x').pathname.slice(1)}`]
-    if (!rota) return responder(404, { erro: 'Acção desconhecida.' })
+    if (!rota) return responder(404, corpoErro(erro('Acção desconhecida.')))
     try {
       responder(200, await rota(req.method === 'POST' ? await lerCorpo(req) : {}))
     } catch (e) {
-      log.erro(`${req.url}: ${e.message}`)
-      responder(400, { erro: e.message })
+      log.erro(m('{rota}: {erro}', { rota: req.url, erro: traduzivel(e) }))
+      responder(400, corpoErro(e))
     }
   })
-  srv.listen(PORTA, '127.0.0.1', () => log.info(`Serviço à escuta em 127.0.0.1:${PORTA}`))
+  srv.listen(PORTA, '127.0.0.1', () => log.info(m('Serviço à escuta em 127.0.0.1:{porta}', { porta: PORTA })))
   return srv
 }

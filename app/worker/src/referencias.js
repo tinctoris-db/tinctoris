@@ -23,6 +23,7 @@ import { iaDisponivel, lerFichaTecnica } from './ia.js'
 import { pastaDoLixo } from './espaco_duplicados.js'
 import { nomeBase } from './juntar.js'
 import { log } from './registo.js'
+import { m, traduzivel } from './mensagens.js'
 import { esperarVez } from './intensidade.js'
 
 export const ETIQUETA = 'Em papel'
@@ -44,7 +45,7 @@ function leitor() {
       }
       return LEITOR
     } catch (e) {
-      log.aviso(`Leitor de códigos de barras indisponível (${String(e.message).split('\n')[0].slice(0, 200)}): as fotografias de ISBN são lidas só com o Tesseract`)
+      log.aviso(m('Leitor de códigos de barras indisponível ({erro}): as fotografias de ISBN são lidas só com o Tesseract', { erro: String(e.message).split('\n')[0].slice(0, 200) }))
       return ''
     }
   })()
@@ -88,7 +89,7 @@ export async function lerFotografias(ficheiros) {
       } catch (e) {
         // (uma fotografia que o leitor não consegue ler não deita fora as outras: uma a uma; as que falharem
         // ficam para o Tesseract, abaixo)
-        log.aviso(`Leitor de códigos de barras: ${String(e.message).split('\n')[0].slice(0, 200)}; a ler as fotografias uma a uma`)
+        log.aviso(m('Leitor de códigos de barras: {erro}; a ler as fotografias uma a uma', { erro: String(e.message).split('\n')[0].slice(0, 200) }))
         for (const f of bloco) saida += (await correr(bin, [f], { timeout: 75000 }).catch(() => '')) + '\n'
       }
       for (const l of saida.split('\n').filter(Boolean)) {
@@ -155,7 +156,7 @@ export async function separarReferencias(ficheiros, { discos = false } = {}) {
   try {
     lidas = await lerFotografias(ficheiros)
   } catch (e) {
-    log.aviso(`Não consegui procurar o ISBN nas fotografias (${e.message}); seguem o caminho normal`)
+    log.aviso(m('Não consegui procurar o ISBN nas fotografias ({erro}); seguem o caminho normal', { erro: traduzivel(e) }))
     return { livros: [], discos: [], resto: ficheiros }
   }
   return classificarFotografias(ficheiros, lidas, { discos })
@@ -341,7 +342,8 @@ export async function paraOLixo(ficheiros, { nome = 'Fotografias de ISBN', reser
     } catch (e) {
       // (sem Lixo do Mac encontrado: ficam à parte, nunca se apagam)
       l.pasta = path.join(PASTAS.naoProcessados, reserva)
-      log.aviso(`${e.message} As ${nome.replace(/^F/, 'f')} já usadas ficam em nao_processados/${reserva}/`)
+      const fotografias = nome === 'Fotografias de ISBN' ? m('fotografias de ISBN') : nome === 'Fotografias de discos' ? m('fotografias de discos') : nome.replace(/^F/, 'f')
+      log.aviso(m('{motivo} As {fotografias} já usadas ficam em nao_processados/{reserva}/', { motivo: traduzivel(e), fotografias, reserva }))
     }
     lixos.set(nome, l)
   }
@@ -389,7 +391,7 @@ export async function tratarReferencia(livro) {
       try {
         ia = await lerFichaTecnica(ficha.ficheiro, defs, ficha.texto)
       } catch (e) {
-        log.aviso(`IA local na ficha técnica de ${path.basename(ficha.ficheiro)}: ${e.message}`)
+        log.aviso(m('IA local na ficha técnica de {ficheiro}: {erro}', { ficheiro: path.basename(ficha.ficheiro), erro: traduzivel(e) }))
       }
     }
   }
@@ -404,7 +406,18 @@ export async function tratarReferencia(livro) {
     if (Object.keys(junta).length) await pb.collection('fontes').update(existente.id, junta)
     const lixo = await paraOLixo(caminhos)
     await arrumar(caminhos)
-    log.info(`Livro em papel: já existia «${existente.titulo}» (${numeroDe(existente)}, ISBN ${isbn})${junta.tags ? `: etiqueta «${ETIQUETA}»` : ''}${Object.keys(junta).filter((k) => k !== 'tags').length ? ` e ${Object.keys(junta).filter((k) => k !== 'tags').join(', ')}` : ''}; fotografias (${nomes}) no Lixo (${path.basename(lixo)})`)
+    const camposJuntos = Object.keys(junta).filter((k) => k !== 'tags')
+    log.info(
+      m('Livro em papel: já existia «{titulo}» ({numero}, ISBN {isbn}){etiqueta}{campos}; fotografias ({nomes}) no Lixo ({lixo})', {
+        titulo: existente.titulo,
+        numero: numeroDe(existente),
+        isbn,
+        etiqueta: junta.tags ? m(': etiqueta «{etiqueta}»', { etiqueta: ETIQUETA }) : '',
+        campos: camposJuntos.length ? m(' e {campos}', { campos: camposJuntos.join(', ') }) : '',
+        nomes,
+        lixo: path.basename(lixo),
+      })
+    )
     return { acao: 'existente', id: existente.id }
   }
 
@@ -413,7 +426,7 @@ export async function tratarReferencia(livro) {
     const destino = path.join(PASTAS.naoProcessados, 'referencias_por_identificar')
     for (const f of caminhos) await F.mover(f, destino, path.basename(f))
     await arrumar(caminhos)
-    log.aviso(`ISBN ${isbn} lido em ${nomes}, mas nenhum catálogo o encontrou e a fotografia não diz o título: fotografias em nao_processados/referencias_por_identificar/ (fotografe também a página de rosto ou a ficha técnica, ou faça a ficha à mão)`)
+    log.aviso(m('ISBN {isbn} lido em {nomes}, mas nenhum catálogo o encontrou e a fotografia não diz o título: fotografias em nao_processados/referencias_por_identificar/ (fotografe também a página de rosto ou a ficha técnica, ou faça a ficha à mão)', { isbn, nomes }))
     return { acao: 'por_identificar' }
   }
 
@@ -473,11 +486,12 @@ export async function tratarReferencia(livro) {
   if (originais) {
     for (const f of caminhos) await F.mover(f, path.join(PASTAS.biblioteca, originais), path.basename(f))
     await arrumar(caminhos)
-    log.info(`Livro em papel: «${titulo}» (${numeroDe(ficha)}, ISBN ${isbn}) feito com os dados da fotografia, por rever; fotografias em ${originais}`)
+    log.info(m('Livro em papel: «{titulo}» ({numero}, ISBN {isbn}) feito com os dados da fotografia, por rever; fotografias em {originais}', { titulo, numero: numeroDe(ficha), isbn, originais }))
   } else {
     const lixo = await paraOLixo(caminhos)
     await arrumar(caminhos)
-    log.info(`Livro em papel: «${titulo}» (${numeroDe(ficha)}, ISBN ${isbn}, ${registo.fonte})${estado === 'completo' ? '' : ', por rever'}; fotografias (${nomes}) no Lixo (${path.basename(lixo)})`)
+    const vars = { titulo, numero: numeroDe(ficha), isbn, fonte: registo.fonte, nomes, lixo: path.basename(lixo) }
+    log.info(estado === 'completo' ? m('Livro em papel: «{titulo}» ({numero}, ISBN {isbn}, {fonte}); fotografias ({nomes}) no Lixo ({lixo})', vars) : m('Livro em papel: «{titulo}» ({numero}, ISBN {isbn}, {fonte}), por rever; fotografias ({nomes}) no Lixo ({lixo})', vars))
   }
   return { acao: 'nova', id: ficha.id, estado }
 }
@@ -486,7 +500,7 @@ export async function tratarReferencia(livro) {
 let cadeia = Promise.resolve()
 export function tratarReferencias(livros) {
   for (const l of livros) {
-    cadeia = cadeia.then(() => tratarReferencia(l)).catch((e) => log.erro(`Livro em papel (${l.fotografias.map((f) => path.basename(f.ficheiro)).join(', ')}): ${e.message}`))
+    cadeia = cadeia.then(() => tratarReferencia(l)).catch((e) => log.erro(m('Livro em papel ({ficheiros}): {erro}', { ficheiros: l.fotografias.map((f) => path.basename(f.ficheiro)).join(', '), erro: traduzivel(e) })))
   }
   return cadeia
 }

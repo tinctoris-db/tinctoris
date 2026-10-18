@@ -12,6 +12,7 @@ import { PASTAS } from './config.js'
 import { pb, garantirSessao, fontesPorIds, copiaDeSeguranca } from './pb.js'
 import { reorganizar } from './processador.js'
 import { log } from './registo.js'
+import { m, erro } from './mensagens.js'
 
 const GERAIS = ['editora', 'local', 'data', 'natureza']
 const NATUREZAS = ['primária', 'secundária']
@@ -25,25 +26,25 @@ const mostrar = (v) => (vazio(v) ? '(vazio)' : Array.isArray(v) ? v.join(', ') :
 
 // Valida a lista que vem da interface; devolve-a limpa ou lança um erro claro
 export function validarAlteracoes(alteracoes) {
-  if (!Array.isArray(alteracoes) || !alteracoes.length) throw new Error('Não escolheu nenhuma alteração.')
+  if (!Array.isArray(alteracoes) || !alteracoes.length) throw erro('Não escolheu nenhuma alteração.')
   return alteracoes.map((a) => {
     const campo = String(a?.campo || '')
     const modo = String(a?.modo || '')
     let valor = a?.valor
     if (typeof valor === 'string') valor = valor.trim()
-    if (vazio(valor)) throw new Error(`Falta o valor para «${campo}».`)
+    if (vazio(valor)) throw erro('Falta o valor para «{campo}».', { campo })
     if (campo === 'tags' || campo === 'contextos') {
-      if (!['acrescentar', 'retirar'].includes(modo)) throw new Error(`Modo desconhecido para «${campo}».`)
+      if (!['acrescentar', 'retirar'].includes(modo)) throw erro('Modo desconhecido para «{campo}».', { campo })
       return { campo, modo, valor: String(valor) }
     }
-    if (!['vazio', 'substituir'].includes(modo)) throw new Error(`Modo desconhecido para «${campo}».`)
+    if (!['vazio', 'substituir'].includes(modo)) throw erro('Modo desconhecido para «{campo}».', { campo })
     if (GERAIS.includes(campo)) {
-      if (campo === 'natureza' && !NATUREZAS.includes(valor)) throw new Error('A natureza tem de ser «primária» ou «secundária».')
+      if (campo === 'natureza' && !NATUREZAS.includes(valor)) throw erro('A natureza tem de ser «primária» ou «secundária».')
       return { campo, modo, valor: String(valor) }
     }
     const chave = /^meta:([a-z0-9_]+)$/.exec(campo)?.[1]
-    if (!chave || INTERNOS.has(chave)) throw new Error(`Campo que não se pode editar em grupo: «${campo}».`)
-    if (!['string', 'number', 'boolean'].includes(typeof valor)) throw new Error(`Valor inválido para «${campo}».`)
+    if (!chave || INTERNOS.has(chave)) throw erro('Campo que não se pode editar em grupo: «{campo}».', { campo })
+    if (!['string', 'number', 'boolean'].includes(typeof valor)) throw erro('Valor inválido para «{campo}».', { campo })
     return { campo, chave, modo, valor }
   })
 }
@@ -82,12 +83,12 @@ export function alteracoesDaFicha(f, alteracoes) {
 
 export async function editarFontes({ ids, alteracoes, semCopia } = {}) {
   ids = Array.isArray(ids) ? [...new Set(ids.map(String))] : []
-  if (!ids.length) throw new Error('Nenhuma fonte seleccionada.')
-  if (ids.length > 200) throw new Error('No máximo 200 fontes de cada vez.')
+  if (!ids.length) throw erro('Nenhuma fonte seleccionada.')
+  if (ids.length > 200) throw erro('No máximo 200 fontes de cada vez.')
   const lista = validarAlteracoes(alteracoes)
   await garantirSessao()
   const copia = semCopia ? null : await copiaDeSeguranca('antes-editar-fontes')
-  if (copia) log.info(`Cópia de segurança criada: ${copia}`)
+  if (copia) log.info(m('Cópia de segurança criada: {copia}', { copia }))
 
   const linhas = []
   const saltadas = []
@@ -133,6 +134,13 @@ export async function editarFontes({ ids, alteracoes, semCopia } = {}) {
   fs.mkdirSync(pastaRegistos, { recursive: true })
   const pedido = lista.map((a) => `${a.chave || a.campo} = «${mostrar(a.valor)}» (${a.modo})`).join('; ')
   fs.appendFileSync(registo, `\n== ${d.toLocaleString('pt-PT')} · ${pedido} · ${mudadas} mudadas, ${iguais} sem mudança, ${saltadas.length} saltadas${copia ? ` · cópia ${copia}` : ''}\n${linhas.join('\n')}\n`)
-  log.info(`Edição em grupo (${pedido}): ${mudadas} fichas mudadas, ${iguais} sem mudança${saltadas.length ? `, ${saltadas.length} saltadas` : ''}`)
+  log.info(
+    m('Edição em grupo ({pedido}): {mudadas} fichas mudadas, {iguais} sem mudança{resto}', {
+      pedido,
+      mudadas,
+      iguais,
+      resto: saltadas.length ? m(', {n} saltadas', { n: saltadas.length }) : '',
+    })
+  )
   return { mudadas, iguais, saltadas, copia, registo }
 }

@@ -236,7 +236,22 @@ original images are kept in `nao_processados/imagens_juntadas/`.
   file** button) always take priority over those re-analyses. On the **Activity** page the card shows both numbers:
   "New" and "Re-analysis".
 - **Pace of online searches:** online services are not overloaded. If one of them refuses requests, it is paused for
-  10 minutes.
+  10 minutes (then 1 hour, then 6 hours if it refuses again straight away). The Activity page shows a single line
+  "… paused until HH:MM".
+
+### Finale scores, PDF transcriptions and the Bach-Gesellschaft-Ausgabe
+Three kinds of file have rules of their own, because catalogues do not know them:
+- **Finale files (`.mus`, `.musx`):** the record is built from what the `.musx` stores inside (title, composer,
+  subtitle with the source and folios, copyright) and from the file name. The parts of the same piece go into a
+  single record. They are **complete even without a date**, with the tag "Finale — dados do nome", if the title says
+  something; a meaningless name ("mvt4") stays to review. With "© <your name>" in the copyright, you are the editor
+  and the copyright year is the date.
+- **PDF transcriptions** made in a notation program (Finale, Sibelius, LilyPond…): if they are the print of a Finale
+  file that already has a record, they join that record (label "PDF"); the others get a record from the file name and
+  the first page, with the tag "Transcrição — dados do ficheiro".
+- **Bach-Gesellschaft-Ausgabe (BGA):** recognised by the file name, the PDF title or the footer "B. W. …". Whole
+  volume: critical edition with title, editor and year. Extract: J. S. Bach, BWV from the file name, Breitkopf &
+  Härtel, year of the volume. Tag "BGA".
 
 ### Books on paper and albums: photograph the ISBN or the barcode
 To add a book that you own (or have consulted) on paper, without typing the record: photograph with your phone the
@@ -512,8 +527,10 @@ with your account. The library is not reachable from the internet.
 
 - **Interface language:** Portuguese or English. It changes at once, without saving, and is kept for the other devices
   that open the same library. The first time, TINCTORIS follows the Mac's language. You can also choose it on the
-  welcome screen and on the login screen. Only the interface changes: records, notes, file names and the messages of
-  the background service (**Activity** page) stay as they are.
+  welcome screen and on the login screen. Only the interface changes: records, notes and file names stay as they are.
+  The messages of the background service (**Activity** page) also change language.
+- **Your account:** the email you sign in with and a button to change the password (at least 8 characters). On
+  this Mac it does not ask for the old one; on another device, it does.
 - **Your name (library owner):** the owner of the library. In a PDF you scanned you are not the author; in a
   transcription made in a score editor you are the editor. Separate several forms of your name with «;».
 - **File name pattern:** by default `{data}_{AUTOR}_{Titulo}`. You can also use `{ano}`, `{autor}`, `{tipo}`,
@@ -692,6 +709,12 @@ need the library to be running.
   gives the translation of each one (the key is the exact Portuguese text; `{n}`, `{titulo}`… are values). Without a
   translation, the Portuguese appears. Values stored in the database (types, roles, options) stay in Portuguese and are
   only translated when displayed. When you add or change a text, add its translation to `en.json`.
+  Messages from the background service (Activity page, route errors, phases and warnings of background jobs) use
+  `worker/src/mensagens.js`: `log.info(m('Texto com {n} …', { n }))` and `throw erro('…', vars)`. The Portuguese text
+  is still sent ready-made (`msg`, `erro`: terminal and older versions) together with the key and values (`chave`,
+  `vars`; for errors `erro_chave`, `vars`; in job states a sibling field `<campo>_t`); the interface shows them with
+  `trMsg`/`trCampo`. The key is always a fixed string in single quotes; `node testes/chaves_mensagens.js` (in
+  `app/worker`) lists keys missing from `en.json` or with different `{placeholders}` (also checked by `node --test`).
 - **Import:** `src/importacao.js` (BibTeX/RIS via citation-js; repeat detection by DOI, ISBN and compact title with
   compatible years).
 - **Not yet included:** access from outside the home network and sharing with other people.

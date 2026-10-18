@@ -10,6 +10,7 @@ import path from 'node:path'
 import { execFile, spawn } from 'node:child_process'
 import { PASTAS } from './config.js'
 import { log } from './registo.js'
+import { m, erro } from './mensagens.js'
 
 export const NIVEIS = ['automatico', 'maxima', 'poupanca', 'pausa']
 export const PAUSA_ENTRE_REANALISES = 30000 // ms, em poupança
@@ -48,7 +49,7 @@ export function estadoIntensidade() {
 }
 
 export async function mudarNivel(nivel) {
-  if (!NIVEIS.includes(nivel)) throw new Error(`Nível desconhecido: ${nivel}`)
+  if (!NIVEIS.includes(nivel)) throw erro('Nível desconhecido: {nivel}', { nivel })
   escolhido = nivel
   fs.mkdirSync(path.dirname(FICHEIRO), { recursive: true })
   fs.writeFileSync(FICHEIRO, JSON.stringify({ nivel }, null, 2))
@@ -90,14 +91,21 @@ async function aplicar() {
     acordado.kill()
     acordado = null
   }
-  if (antes !== null) log.info(`Intensidade: ${ROTULO[efetivo]}${escolhido === 'automatico' ? ` (automático: ${energia.carregador ? 'ligado ao carregador' : 'a bateria'})` : ''}`)
+  if (antes !== null) log.info(mensagemIntensidade(efetivo))
 }
-const ROTULO = { maxima: 'máxima', poupanca: 'poupança', pausa: 'pausa' }
+// (o nível e a fonte de energia vão como mensagens dentro da mensagem, para a interface os traduzir também)
+const ROTULO = { maxima: m('máxima'), poupanca: m('poupança'), pausa: m('pausa') }
+function mensagemIntensidade(nivel) {
+  const nome = ROTULO[nivel]
+  if (escolhido !== 'automatico') return m('Intensidade: {nivel}', { nivel: nome })
+  const energiaMsg = energia.carregador ? m('ligado ao carregador') : m('a bateria')
+  return m('Intensidade: {nivel} (automático: {energia})', { nivel: nome, energia: energiaMsg })
+}
 
 export async function iniciarIntensidade() {
   await lerEnergia()
   await aplicar()
-  log.info(`Intensidade: ${ROTULO[nivelEfetivo()]}${escolhido === 'automatico' ? ` (automático: ${energia.carregador ? 'ligado ao carregador' : 'a bateria'})` : ''}`)
+  log.info(mensagemIntensidade(nivelEfetivo()))
   setInterval(async () => {
     await lerEnergia()
     await aplicar()

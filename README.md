@@ -280,7 +280,24 @@ originais ficam guardadas em `nao_processados/imagens_juntadas/`.
   **Reanalisar**) passam sempre à frente dessas reanálises. Em **Actividade** o
   cartão mostra os dois números: "Novos" e "Reanálise".
 - **Ritmo das pesquisas online:** os serviços online não são sobrecarregados. Se
-  um deles recusar pedidos, fica em pausa 10 minutos.
+  um deles recusar pedidos, fica em pausa 10 minutos (1 hora, depois 6 horas, se voltar
+  a recusar logo a seguir). A página Actividade mostra uma só linha «… em pausa até HH:MM».
+
+### Partituras do Finale, transcrições em PDF e Bach-Gesellschaft-Ausgabe
+Três tipos de ficheiro têm regras próprias, porque os catálogos não os conhecem:
+- **Ficheiros do Finale (`.mus`, `.musx`):** a ficha faz-se com o que o `.musx` guarda
+  lá dentro (título, compositor, subtítulo com a fonte e os fólios, direitos) e com o
+  nome do ficheiro. As partes cavas da mesma peça ficam numa só ficha. Ficam **completas
+  mesmo sem data**, com a etiqueta «Finale — dados do nome», se o título disser alguma
+  coisa; um nome sem sentido («mvt4») fica por rever. Com «© <o seu nome>» nos direitos,
+  é o editor, e o ano dos direitos é a data.
+- **PDFs de transcrições** feitos num editor de partituras (Finale, Sibelius,
+  LilyPond…): se forem a impressão de um ficheiro do Finale que já tem ficha, entram
+  nessa ficha (rótulo «PDF»); os outros ganham ficha pelo nome e pela primeira página,
+  com a etiqueta «Transcrição — dados do ficheiro».
+- **Bach-Gesellschaft-Ausgabe (BGA):** reconhecida pelo nome, pelo título do PDF ou
+  pelo rodapé «B. W. …». Volume inteiro: edição crítica com título, editor e ano.
+  Extracto: J. S. Bach, BWV do nome, Breitkopf & Härtel, ano do volume. Etiqueta «BGA».
 
 ### Livros em papel e discos: fotografar o ISBN ou o código de barras
 Para acrescentar um livro que tem (ou consultou) em papel, sem escrever a ficha:
@@ -611,8 +628,10 @@ biblioteca não fica acessível a partir da internet.
 
 - **Idioma da interface:** português ou inglês (*English*). Muda logo, sem guardar, e fica para os outros aparelhos
   que abrem a mesma biblioteca. Na primeira vez, o TINCTORIS segue o idioma do Mac. Também se escolhe nas
-  boas-vindas e no ecrã de entrada. Só muda a interface: as fichas, as notas, os nomes dos ficheiros e as mensagens
-  do serviço de fundo (página Actividade) ficam como estão.
+  boas-vindas e no ecrã de entrada. Só muda a interface: as fichas, as notas e os nomes dos ficheiros ficam como
+  estão. As mensagens do serviço de fundo (página Actividade) também mudam de idioma.
+- **A sua conta:** o email com que entra e o botão para mudar a palavra-passe (mínimo
+  8 caracteres). Neste Mac não pede a antiga; noutro aparelho, pede.
 - **O seu nome:** o dono da biblioteca. Num PDF que digitalizou não é o autor; numa transcrição feita num editor de
   partituras é o editor. Várias formas do nome: separe-as com «;».
 - **Padrão do nome do ficheiro:** por omissão `{data}_{AUTOR}_{Titulo}`. Também
@@ -813,6 +832,12 @@ a correr.
   tradução de cada um (a chave é o texto português exacto; `{n}`, `{titulo}`… são valores). Sem tradução, aparece o
   português. Os valores guardados na base (tipos, papéis, opções) ficam em português e só se traduzem ao mostrar.
   Ao acrescentar ou mudar um texto, acrescentar a tradução em `en.json`.
+  As mensagens do serviço de fundo (página Actividade, erros das rotas, fases e avisos dos trabalhos) usam
+  `worker/src/mensagens.js`: `log.info(m('Texto com {n} …', { n }))` e `throw erro('…', vars)`. O texto português
+  continua a ir pronto (`msg`, `erro`: terminal e versões antigas) e leva a chave e os valores (`chave`, `vars`; nos
+  erros `erro_chave`, `vars`; nos estados dos trabalhos um campo irmão `<campo>_t`); a interface mostra-os com
+  `trMsg`/`trCampo`. A chave é sempre um texto fixo entre plicas; `node testes/chaves_mensagens.js` (em `app/worker`)
+  lista as que faltam no `en.json` ou têm `{marcadores}` diferentes (também verificado por `node --test`).
 - **Importação:** `src/importacao.js` (BibTeX/RIS via citation-js; detecção de
   repetições por DOI, ISBN e título compacto com anos compatíveis).
 - **Ainda não incluído:** acesso fora de casa e partilha com outras pessoas.

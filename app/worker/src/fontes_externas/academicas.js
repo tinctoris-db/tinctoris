@@ -156,6 +156,8 @@ export async function halPesquisar({ titulo, autor, linhas = 5 }, email) {
 export async function semanticScholarPesquisar({ titulo, autor, linhas = 5 }, email, chave) {
   if (!titulo) return []
   const q = [titulo, autor].filter(Boolean).join(' ')
+  // (a chave colada com o rótulo do email, «S2 API Key: s2k-…», era recusada com «403»: fica só a última palavra)
+  chave = String(chave || '').trim().split(/\s+/).pop()
   const campos = 'title,authors,year,venue,externalIds,url,publicationTypes,journal'
   const j = await obterJson(`https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(q)}&limit=${linhas}&fields=${campos}`, {
     email,

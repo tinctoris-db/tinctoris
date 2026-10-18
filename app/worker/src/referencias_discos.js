@@ -26,6 +26,7 @@ import { pessoa, eInstituicao, normalizar } from './fontes_externas/util.js'
 import { iaDisponivel, lerCapaDisco } from './ia.js'
 import { lerFotografias, eanValido, eanDeDisco, semMaiusculas, paraOLixo, arrumar, numeroDe, vazio } from './referencias.js'
 import { log } from './registo.js'
+import { m, traduzivel } from './mensagens.js'
 import { esperarVez } from './intensidade.js'
 
 export const ETIQUETA = 'Exemplar físico'
@@ -385,7 +386,7 @@ export async function identificar(grupo, defs, c) {
       try {
         lidas.push(await c.lerCapa(f.ficheiro, defs, f.texto))
       } catch (e) {
-        log.aviso(`IA local na capa do disco ${path.basename(f.ficheiro)}: ${e.message}`)
+        log.aviso(m('IA local na capa do disco {ficheiro}: {erro}', { ficheiro: path.basename(f.ficheiro), erro: traduzivel(e) }))
       }
     }
     if (lidas.length) {
@@ -578,7 +579,7 @@ let modulo = null
 async function catalogos() {
   modulo ||= import('./fontes_externas/discos.js').catch((e) => {
     modulo = null
-    log.aviso(`Catálogos de discos indisponíveis (${e.message})`)
+    log.aviso(m('Catálogos de discos indisponíveis ({erro})', { erro: traduzivel(e) }))
     return null
   })
   return modulo
@@ -602,7 +603,7 @@ async function fichaExistente({ ean, url }) {
     return r.items[0] || null
   } catch (e) {
     // (não é «não há»: sem saber se a ficha existe, não se faz outra)
-    log.erro(`Disco: não consegui procurar a ficha existente (${[ean, url].filter(Boolean).join(', ')}): ${e.message}`)
+    log.erro(m('Disco: não consegui procurar a ficha existente ({codigos}): {erro}', { codigos: [ean, url].filter(Boolean).join(', '), erro: traduzivel(e) }))
     throw e
   }
 }
@@ -644,7 +645,7 @@ async function guardarOriginais(caminhos, originais) {
 }
 async function devolver(movidas, originais) {
   for (const [de, para] of [...movidas].reverse()) {
-    await F.mover(para, path.dirname(de), path.basename(de)).catch((e) => log.erro(`Disco: não consegui devolver ${path.basename(para)} a ${path.dirname(de)} (está em ${para}): ${e.message}`))
+    await F.mover(para, path.dirname(de), path.basename(de)).catch((e) => log.erro(m('Disco: não consegui devolver {ficheiro} a {pasta} (está em {caminho}): {erro}', { ficheiro: path.basename(para), pasta: path.dirname(de), caminho: para, erro: traduzivel(e) })))
   }
   if (originais) await F.limparPastasVazias(path.join(PASTAS.biblioteca, originais), PASTAS.biblioteca).catch(() => {})
 }
@@ -673,21 +674,34 @@ export async function tratarDisco(id, fichas = FICHAS) {
       throw err
     }
     const campos = Object.keys(junta).filter((k) => k !== 'tags' && !(dec.fraco && k === 'metadados'))
-    const qual = `«${e.titulo}» (${[numeroDe(e), codigo].filter(Boolean).join(', ')})${junta.tags ? `: etiqueta «${ETIQUETA}»` : ''}${campos.length ? ` e ${campos.join(', ')}` : ''}`
+    const qual = m('«{titulo}» ({ids}){etiqueta}{campos}', {
+      titulo: e.titulo,
+      ids: [numeroDe(e), codigo].filter(Boolean).join(', '),
+      etiqueta: junta.tags ? m(': etiqueta «{etiqueta}»', { etiqueta: ETIQUETA }) : '',
+      campos: campos.length ? m(' e {campos}', { campos: campos.join(', ') }) : '',
+    })
     if (dec.fraco) {
       await arrumar(caminhos, raiz)
-      log.info(`Disco: parece ser ${qual}, encontrada só pelo título; fotografias em ${originais}, para confirmar`)
+      log.info(m('Disco: parece ser {qual}, encontrada só pelo título; fotografias em {originais}, para confirmar', { qual, originais }))
       return { acao: 'existente', id: e.id, fraco: true }
     }
-    const lixo = await paraOLixo(caminhos, LIXO).catch((err) => (log.aviso(`Disco ${qual}: as fotografias não foram para o Lixo (${err.message})`), ''))
+    const lixo = await paraOLixo(caminhos, LIXO).catch((err) => (log.aviso(m('Disco {qual}: as fotografias não foram para o Lixo ({erro})', { qual, erro: traduzivel(err) })), ''))
     await arrumar(caminhos, raiz)
-    if (lixo) log.info(`Disco: já existia ${qual}; fotografias (${nomes}) no Lixo (${path.basename(lixo)})`)
+    if (lixo) log.info(m('Disco: já existia {qual}; fotografias ({nomes}) no Lixo ({lixo})', { qual, nomes, lixo: path.basename(lixo) }))
     return { acao: 'existente', id: e.id }
   }
 
   if (dec.acao === 'por_identificar') {
     await paraPorIdentificar(caminhos, raiz)
-    log.aviso(`Disco${codigo ? ` (${codigo})` : ''} em ${nomes}: nenhum catálogo o encontrou e não consegui ler o título${id.tituloCortado ? ` (na fotografia lê-se «${id.tituloCortado}», cortado na borda)` : ''}${id.iaEmFalta ? ' (a IA local não está disponível)' : ''}: fotografias em nao_processados/${POR_IDENTIFICAR}/ (fotografe também a capa, ponha as fotografias numa subpasta de Discos com o nome do disco, ou faça a ficha à mão)`)
+    log.aviso(
+      m('Disco{codigo} em {nomes}: nenhum catálogo o encontrou e não consegui ler o título{cortado}{ia}: fotografias em nao_processados/{pasta}/ (fotografe também a capa, ponha as fotografias numa subpasta de Discos com o nome do disco, ou faça a ficha à mão)', {
+        codigo: codigo ? ` (${codigo})` : '',
+        nomes,
+        cortado: id.tituloCortado ? m(' (na fotografia lê-se «{titulo}», cortado na borda)', { titulo: id.tituloCortado }) : '',
+        ia: id.iaEmFalta ? m(' (a IA local não está disponível)') : '',
+        pasta: POR_IDENTIFICAR,
+      })
+    )
     return { acao: 'por_identificar' }
   }
 
@@ -713,12 +727,12 @@ export async function tratarDisco(id, fichas = FICHAS) {
   const quem = [numeroDe(ficha), codigo, id.registo?.fonte].filter(Boolean).join(', ')
   if (originais) {
     await arrumar(caminhos, raiz)
-    log.info(`Disco: «${dados.titulo}» (${quem}) por rever; fotografias em ${originais}`)
+    log.info(m('Disco: «{titulo}» ({quem}) por rever; fotografias em {originais}', { titulo: dados.titulo, quem, originais }))
   } else {
     // (completa: a ficha já está gravada; se o Lixo falhar, as fotografias ficam e da próxima vez já há ficha)
-    const lixo = await paraOLixo(caminhos, LIXO).catch((e) => (log.aviso(`Disco «${dados.titulo}» (${quem}): as fotografias (${nomes}) não foram para o Lixo (${e.message})`), ''))
+    const lixo = await paraOLixo(caminhos, LIXO).catch((e) => (log.aviso(m('Disco «{titulo}» ({quem}): as fotografias ({nomes}) não foram para o Lixo ({erro})', { titulo: dados.titulo, quem, nomes, erro: traduzivel(e) })), ''))
     await arrumar(caminhos, raiz)
-    if (lixo) log.info(`Disco: «${dados.titulo}» (${quem}); fotografias (${nomes}) no Lixo (${path.basename(lixo)})`)
+    if (lixo) log.info(m('Disco: «{titulo}» ({quem}); fotografias ({nomes}) no Lixo ({lixo})', { titulo: dados.titulo, quem, nomes, lixo: path.basename(lixo) }))
   }
   return { acao: 'nova', id: ficha.id, estado: dados.estado }
 }
@@ -733,8 +747,8 @@ async function paraPorIdentificar(caminhos, raiz) {
 // nao_processados/referencias_por_identificar/ (senão seriam tratadas outra vez a cada arranque, sempre com o mesmo erro)
 async function falhou(fotografias, raiz, e) {
   const caminhos = fotografias.map((f) => f.ficheiro || f)
-  log.erro(`Disco (${caminhos.map((f) => path.basename(f)).join(', ')}): ${e.message}; fotografias em nao_processados/${POR_IDENTIFICAR}/`)
-  await paraPorIdentificar(caminhos, raiz).catch((x) => log.erro(`Disco: não consegui mover as fotografias para nao_processados/${POR_IDENTIFICAR}/ (${x.message}); ficam onde estão`))
+  log.erro(m('Disco ({ficheiros}): {erro}; fotografias em nao_processados/{pasta}/', { ficheiros: caminhos.map((f) => path.basename(f)).join(', '), erro: traduzivel(e), pasta: POR_IDENTIFICAR }))
+  await paraPorIdentificar(caminhos, raiz).catch((x) => log.erro(m('Disco: não consegui mover as fotografias para nao_processados/{pasta}/ ({erro}); ficam onde estão', { pasta: POR_IDENTIFICAR, erro: traduzivel(x) })))
 }
 
 // Identifica e trata os grupos, cada um à parte (um erro num grupo não pára os outros)
@@ -783,6 +797,6 @@ async function tratarPedido({ lidas, ficheiros = [], raiz = PASTAS.watch, umDisc
 let cadeia = Promise.resolve()
 export function tratarDiscos(pedido) {
   const quais = (pedido.lidas || []).map((l) => l.ficheiro).concat(pedido.ficheiros || [])
-  cadeia = cadeia.then(() => tratarPedido(pedido)).catch((e) => log.erro(`Disco (${quais.map((f) => path.basename(f)).join(', ')}): ${e.message}`))
+  cadeia = cadeia.then(() => tratarPedido(pedido)).catch((e) => log.erro(m('Disco ({ficheiros}): {erro}', { ficheiros: quais.map((f) => path.basename(f)).join(', '), erro: traduzivel(e) })))
   return cadeia
 }

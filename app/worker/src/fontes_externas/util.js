@@ -1,23 +1,57 @@
 // Utilitários comuns às fontes externas de metadados.
 import { semAcentos } from '../ficheiros.js'
+import { log } from '../registo.js'
 
 export function agenteUtilizador(email) {
   return `BibliotecaFontes/1.0 (personal research library${email ? '; mailto:' + email : ''})`
 }
 
+// Serviço de um endereço: o servidor, salvo no www.googleapis.com, onde o Google Books e o YouTube têm quotas
+// separadas (uma recusa de um não deve pôr o outro em pausa)
+export function servicoDe(url) {
+  const u = new URL(url)
+  return u.host === 'www.googleapis.com' ? `${u.host}/${u.pathname.split('/')[1]}` : u.host
+}
+const NOMES = { 'www.googleapis.com/books': 'Google Books', 'www.googleapis.com/youtube': 'YouTube', 'api.semanticscholar.org': 'Semantic Scholar' }
+const nomeDo = (servico) => NOMES[servico] || servico
+
 // Ritmo por serviço: no máximo ~5 pedidos por segundo a cada um (evita recusas "429").
 const ritmos = new Map()
-// (a Gallica responde "429 Trop de requêtes" a pedidos seguidos: no máximo ~1 por segundo)
-const LENTOS = /musicbrainz|gallica\.bnf\.fr|catalogue\.bnf\.fr/
-function ritmoDe(host) {
-  if (!ritmos.has(host)) ritmos.set(host, limitador(LENTOS.test(host) ? 1100 : 200))
-  return ritmos.get(host)
+// (a Gallica responde "429 Trop de requêtes" a pedidos seguidos; o Semantic Scholar com chave aceita 1 por segundo;
+// o Google Books recusa rajadas mesmo com chave: no máximo ~1 por segundo)
+const LENTOS = /musicbrainz|gallica\.bnf\.fr|catalogue\.bnf\.fr|semanticscholar\.org|googleapis\.com\/books/
+function ritmoDe(servico) {
+  if (!ritmos.has(servico)) ritmos.set(servico, limitador(LENTOS.test(servico) ? 1100 : 200))
+  return ritmos.get(servico)
 }
 
-// Serviço que recusa repetidamente fica em pausa 10 minutos (não atrasar cada ficheiro)
+// Serviço que recusa repetidamente fica em pausa: 10 minutos, e mais tempo se voltar a recusar logo a seguir
+// (quota diária esgotada: 1 hora, depois 6 horas); um pedido bem-sucedido volta ao início
 const suspensos = new Map()
+const recusasSeguidas = new Map()
+const PAUSAS = [10, 60, 360].map((m) => m * 60 * 1000)
 // (quantas vezes seguidas cada serviço deixou um pedido sem resposta)
 const semResposta = new Map()
+
+// Erro de um serviço em pausa: quem consulta várias fontes salta-o sem aviso (a pausa já foi registada uma vez)
+export class EmPausa extends Error {
+  constructor(servico, ate) {
+    super(`${nomeDo(servico)} em pausa até ${horaDe(ate)} (demasiados pedidos)`)
+    this.emPausa = true
+  }
+}
+// Junta o erro de uma fonte à lista de avisos, salvo se a fonte está só em pausa
+export function anotarErro(erros, nome, e) {
+  if (!e?.emPausa) erros.push(`${nome}: ${e?.message || e}`)
+}
+const horaDe = (t) => new Date(t).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+
+function pausar(servico, motivo, duracao) {
+  const ate = Date.now() + duracao
+  suspensos.set(servico, ate)
+  log.info(`${nomeDo(servico)} em pausa até ${horaDe(ate)} (${motivo}); as outras fontes continuam`)
+  return new EmPausa(servico, ate)
+}
 
 export async function obterJson(url, opcoes = {}) {
   return obter(url, { ...opcoes, comoTexto: false })
@@ -30,9 +64,11 @@ export async function obterTexto(url, opcoes = {}) {
 
 async function obter(url, { email, cabecalhos = {}, timeout = 20000, comoTexto = false } = {}) {
   const host = new URL(url).host
-  if ((suspensos.get(host) || 0) > Date.now()) throw new Error(`${host} em pausa (demasiados pedidos)`)
+  const servico = servicoDe(url)
+  const ate = suspensos.get(servico) || 0
+  if (ate > Date.now()) throw new EmPausa(servico, ate)
   for (let tentativa = 0; tentativa < 2; tentativa++) {
-    await ritmoDe(host)()
+    await ritmoDe(servico)()
     const ctrl = new AbortController()
     const t = setTimeout(() => ctrl.abort(), timeout)
     try {
@@ -47,30 +83,29 @@ async function obter(url, { email, cabecalhos = {}, timeout = 20000, comoTexto =
         continue
       }
       // (a Gallica, depois de muitos pedidos seguidos, passa a responder "403" durante algum tempo: pausa)
-      if (r.status === 403 && LENTOS.test(host)) {
-        suspensos.set(host, Date.now() + 10 * 60 * 1000)
-        throw new Error(`HTTP 403 em ${host} (em pausa durante 10 minutos)`)
-      }
+      if (r.status === 403 && /musicbrainz|gallica\.bnf\.fr|catalogue\.bnf\.fr/.test(servico)) throw pausar(servico, 'recusou o acesso', PAUSAS[0])
       if (!r.ok) throw new Error(`HTTP ${r.status} em ${host}`)
       const resposta = comoTexto ? (await r.text()).replace(/^﻿/, '') : await r.json()
-      semResposta.delete(host)
+      semResposta.delete(servico)
+      recusasSeguidas.delete(servico)
       return resposta
     } catch (e) {
       // Serviço que não responde (ex.: a Gallica em baixo): à 2.ª vez seguida fica em pausa 10 minutos, para não
       // fazer esperar cada ficheiro (um atraso isolado não pára o serviço)
       if (e.name !== 'AbortError') throw e
-      const vezes = (semResposta.get(host) || 0) + 1
-      semResposta.set(host, vezes)
+      const vezes = (semResposta.get(servico) || 0) + 1
+      semResposta.set(servico, vezes)
       if (vezes < 2) throw new Error(`${host} não respondeu em ${Math.round(timeout / 1000)} s`)
-      semResposta.delete(host)
-      suspensos.set(host, Date.now() + 10 * 60 * 1000)
-      throw new Error(`${host} não respondeu (em pausa durante 10 minutos)`)
+      semResposta.delete(servico)
+      throw pausar(servico, 'não respondeu', PAUSAS[0])
     } finally {
       clearTimeout(t)
     }
   }
-  suspensos.set(host, Date.now() + 10 * 60 * 1000)
-  throw new Error(`HTTP 429 em ${host} (em pausa durante 10 minutos)`)
+  // Recusou duas vezes seguidas: pausa, mais longa se já tinha recusado logo depois da pausa anterior
+  const n = recusasSeguidas.get(servico) || 0
+  recusasSeguidas.set(servico, n + 1)
+  throw pausar(servico, n ? 'voltou a recusar logo depois da pausa: quota esgotada?' : 'demasiados pedidos', PAUSAS[Math.min(n, PAUSAS.length - 1)])
 }
 
 // Nomes de instituições e grupos (ficam como nome literal, sem apelido/nome)

@@ -8,6 +8,7 @@ import '@citation-js/plugin-bibtex'
 import '@citation-js/plugin-ris'
 import { PASTAS } from './config.js'
 import { semAcentos } from './ficheiros.js'
+import { erro } from './mensagens.js'
 
 const configCsl = plugins.config.get('@csl')
 
@@ -33,7 +34,7 @@ export function listarEstilos() {
 function prepararEstilo(id, lingua) {
   listarEstilos()
   const e = estilos.find((x) => x.id === id)
-  if (!e) throw new Error(`Estilo desconhecido: ${id}`)
+  if (!e) throw erro('Estilo desconhecido: {id}', { id })
   const nome = `${id}__${lingua || 'orig'}`
   if (!configCsl.styles.has(nome)) {
     let xml = e.xml
@@ -167,7 +168,7 @@ export function exportar(fontes, { estilo = 'apa', formato = 'texto', lingua = '
   const itens = chavesUnicas(fontes.map((f) => paraCsl(f, f.expand?.tipo)))
   const cite = new Cite(itens)
   const fmt = FORMATOS[formato]
-  if (!fmt) throw new Error(`Formato desconhecido: ${formato}`)
+  if (!fmt) throw erro('Formato desconhecido: {formato}', { formato })
   let conteudo
   if (formato === 'bibtex') conteudo = cite.format('bibtex')
   else if (formato === 'ris') conteudo = cite.format('ris')

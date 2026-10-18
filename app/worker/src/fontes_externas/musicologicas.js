@@ -1,7 +1,7 @@
 // Catálogos de fontes musicais antigas: RISM (manuscritos e impressos) e DIAMM (manuscritos até c. 1650).
 // Com sigla + cota a identificação é quase exata; nos impressos, o ano + compositor + título na fonte
 // chegam normalmente para encontrar o registo RISM (séries A/I e B/I).
-import { obterJson, pessoa, primeiro, candidato, semelhanca, contido, normalizar } from './util.js'
+import { obterJson, anotarErro, pessoa, primeiro, candidato, semelhanca, contido, normalizar } from './util.js'
 import { cantusPorCota, ligacoesCantus } from './cantus.js'
 import { gallicaPesquisar } from './gallica.js'
 import { bachPorCota } from './bach_digital.js'
@@ -391,7 +391,7 @@ export async function pesquisarMusical(q, email, opcoes = {}) {
     try {
       candidatos.push(...((await fn()) || []).filter(Boolean))
     } catch (e) {
-      erros.push(`${nome}: ${e.message}`)
+      anotarErro(erros, nome, e)
     }
   }
   const limiar = 0.8
@@ -435,7 +435,7 @@ export async function pesquisarMusical(q, email, opcoes = {}) {
           if (!m.local_arquivo && r.indice.cidade) m.local_arquivo = r.indice.cidade
         }
       } catch (e) {
-        erros.push(`cantus: ${e.message}`)
+        anotarErro(erros, 'cantus', e)
       }
     }
     // Fontes de Bach (e da família) no Bach digital: copista, datação e cadeia de possuidores
@@ -449,7 +449,7 @@ export async function pesquisarMusical(q, email, opcoes = {}) {
         else candidatos.push(b)
       }
     } catch (e) {
-      erros.push(`bach digital: ${e.message}`)
+      anotarErro(erros, 'bach digital', e)
     }
     if (candidatos.length) return { candidatos: juntarPorCota(candidatos), erros, outros }
   }
@@ -514,7 +514,7 @@ export async function pesquisarMusical(q, email, opcoes = {}) {
         digitalizacoes = await europeanaDigitalizacoes({ titulo: melhor.titulo, autor: autor?.apelido || q.autor, ano: (/(\d{4})/.exec(melhor.data || '') || [])[1] || q.ano }, { email, chave: opcoes.europeana, semelhanca: semelhancaLatim })
       }
     } catch (e) {
-      erros.push(`europeana: ${e.message}`)
+      anotarErro(erros, 'europeana', e)
     }
   }
   return { candidatos, erros, outros, digitalizacoes }

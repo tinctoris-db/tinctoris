@@ -1,5 +1,22 @@
 # TINCTORIS — novidades de cada versão
 
+## 0.11.0-beta (18 de Outubro de 2026)
+
+### Acrescentar fontes
+- Ficheiros do Finale (.mus e .musx): a ficha faz-se a partir dos dados guardados no ficheiro (título, compositor, fonte) e do nome; as partes cavas da mesma peça ficam numa só ficha.
+- PDFs de transcrições feitos num editor de partituras (Finale, Sibelius, LilyPond…): juntam-se à ficha do ficheiro do Finale de onde foram impressos, ou ganham ficha própria pelo nome e pela primeira página.
+- Bach-Gesellschaft-Ausgabe: volumes inteiros e extractos reconhecidos (BWV, volume, ano e editor).
+
+### Catálogos
+- Google Books e Semantic Scholar consultados ao ritmo que aceitam: quando recusam, uma pausa curta em vez de avisos vermelhos repetidos; o Semantic Scholar entra na pesquisa automática quando há chave.
+- Fotografias e imagens soltas já não ficam «completas» só pelo Google Books ou pelo Semantic Scholar (ficam como sugestão).
+
+### Conta, instalação e arranque
+- Definições → «A sua conta»: ver o email e mudar a palavra-passe.
+- A instalação usa o Node.js oficial (nodejs.org) em vez do Homebrew e avisa em macOS anterior ao 15.
+- Arranque mais robusto: o serviço de fundo espera até 10 minutos pela base de dados (bibliotecas grandes demoram a abrir).
+- As mensagens do serviço de fundo (página Actividade) também em inglês.
+
 ## 0.10.0-beta (11 de Outubro de 2026)
 
 ### Interface

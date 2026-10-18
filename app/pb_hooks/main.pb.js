@@ -190,21 +190,36 @@ routerAdd("POST", "/api/bib/servico/{acao}", (e) => require(`${__hooks}/bibliote
 // ---------------------------------------------------------------------------
 
 routerAdd("GET", "/api/bib/conta-estado", (e) => {
+  const bib = require(`${__hooks}/biblioteca.js`)
   const n = new DynamicModel({ n: 0 })
   e.app.db().newQuery("SELECT count(*) AS n FROM _superusers WHERE email != 'servico@biblioteca.local'").one(n)
-  return e.json(200, { temConta: n.n > 0, local: require(`${__hooks}/biblioteca.js`).pedidoLocal(e) })
+  // (paginaLocal: neste Mac a palavra-passe muda-se sem pedir a antiga)
+  return e.json(200, { temConta: n.n > 0, local: bib.pedidoLocal(e), paginaLocal: bib.paginaLocal(e) })
 })
+
+// Mudar a palavra-passe da conta (Definições → «A sua conta»; pedido do Pedro, 12/10/2026). Neste Mac não pede a
+// antiga: quem usa o Mac já tem acesso a tudo, e assim serve também quando a esqueceu. Noutro aparelho pede-a primeiro.
+// Depois da mudança, as sessões abertas noutros aparelhos deixam de valer e pedem a nova.
+routerAdd("POST", "/api/bib/mudar-palavra-passe", (e) => {
+  const bib = require(`${__hooks}/biblioteca.js`)
+  const conta = e.auth
+  if (!conta || conta.collection().name !== "_superusers" || conta.email() === "servico@biblioteca.local") throw new ForbiddenError("Só a conta da biblioteca pode mudar a palavra-passe.")
+  const b = e.requestInfo().body || {}
+  const nova = String(b.nova || "")
+  if (nova.length < 8) throw new BadRequestError("A palavra-passe nova tem de ter pelo menos 8 caracteres.")
+  const local = bib.paginaLocal(e)
+  if (!local && !conta.validatePassword(String(b.atual || ""))) throw new BadRequestError("A palavra-passe actual não está certa.")
+  conta.setPassword(nova)
+  e.app.save(conta)
+  return e.json(200, { ok: true, email: conta.email(), local })
+}, $apis.requireSuperuserAuth())
 
 // Entrada automática neste computador (sem ecrã de entrada); nos outros aparelhos da rede continua a
 // pedir a palavra-passe. Só para a própria página da biblioteca: um site aberto no navegador deste Mac
 // (ou um nome de domínio apontado para 127.0.0.1) não recebe a sessão.
 routerAdd("POST", "/api/bib/sessao-local", (e) => {
   const bib = require(`${__hooks}/biblioteca.js`)
-  const local = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i
-  const host = String(e.request.host || "")
-  const origem = String(e.request.header.get("Origin") || "")
-  const origemOk = !origem || /^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(origem)
-  if (!bib.pedidoLocal(e) || !local.test(host) || !origemOk) throw new ForbiddenError("Só neste computador.")
+  if (!bib.paginaLocal(e)) throw new ForbiddenError("Só neste computador.")
   let conta
   try {
     conta = e.app.findFirstRecordByFilter("_superusers", "email != 'servico@biblioteca.local'", {})

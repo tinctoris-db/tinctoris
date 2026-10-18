@@ -2,6 +2,75 @@
   "_nota": "Novidades de cada versão, mostradas em «Acerca» (a mais recente primeiro). Cada texto em português (pt) e inglês (en). O NOVIDADES.md, na raiz, tem a mesma lista para ler no GitHub.",
   "versoes": [
     {
+      "versao": "0.11.0-beta",
+      "data": {
+        "pt": "18 de Outubro de 2026",
+        "en": "18 October 2026"
+      },
+      "grupos": [
+        {
+          "titulo": {
+            "pt": "Acrescentar fontes",
+            "en": "Adding sources"
+          },
+          "itens": [
+            {
+              "pt": "Ficheiros do Finale (.mus e .musx): a ficha faz-se a partir dos dados guardados no ficheiro (título, compositor, fonte) e do nome; as partes cavas da mesma peça ficam numa só ficha.",
+              "en": "Finale files (.mus and .musx): the record is built from the data stored in the file (title, composer, source) and from the file name; the parts of the same piece go into a single record."
+            },
+            {
+              "pt": "PDFs de transcrições feitos num editor de partituras (Finale, Sibelius, LilyPond…): juntam-se à ficha do ficheiro do Finale de onde foram impressos, ou ganham ficha própria pelo nome e pela primeira página.",
+              "en": "PDF transcriptions made in a notation program (Finale, Sibelius, LilyPond…): they join the record of the Finale file they were printed from, or get their own record from the file name and the first page."
+            },
+            {
+              "pt": "Bach-Gesellschaft-Ausgabe: volumes inteiros e extractos reconhecidos (BWV, volume, ano e editor).",
+              "en": "Bach-Gesellschaft-Ausgabe: whole volumes and extracts are recognised (BWV, volume, year and editor)."
+            }
+          ]
+        },
+        {
+          "titulo": {
+            "pt": "Catálogos",
+            "en": "Catalogues"
+          },
+          "itens": [
+            {
+              "pt": "Google Books e Semantic Scholar consultados ao ritmo que aceitam: quando recusam, uma pausa curta em vez de avisos vermelhos repetidos; o Semantic Scholar entra na pesquisa automática quando há chave.",
+              "en": "Google Books and Semantic Scholar are queried at the rate they accept: when they refuse, a short pause instead of repeated red warnings; Semantic Scholar joins the automatic search when a key is set."
+            },
+            {
+              "pt": "Fotografias e imagens soltas já não ficam «completas» só pelo Google Books ou pelo Semantic Scholar (ficam como sugestão).",
+              "en": "Photographs and loose images are no longer marked “complete” on the strength of Google Books or Semantic Scholar alone (they stay as a suggestion)."
+            }
+          ]
+        },
+        {
+          "titulo": {
+            "pt": "Conta, instalação e arranque",
+            "en": "Account, installation and start-up"
+          },
+          "itens": [
+            {
+              "pt": "Definições → «A sua conta»: ver o email e mudar a palavra-passe.",
+              "en": "Settings → “Your account”: see the email and change the password."
+            },
+            {
+              "pt": "A instalação usa o Node.js oficial (nodejs.org) em vez do Homebrew e avisa em macOS anterior ao 15.",
+              "en": "Installation uses the official Node.js (nodejs.org) instead of Homebrew and warns on macOS earlier than 15."
+            },
+            {
+              "pt": "Arranque mais robusto: o serviço de fundo espera até 10 minutos pela base de dados (bibliotecas grandes demoram a abrir).",
+              "en": "More robust start-up: the background service waits up to 10 minutes for the database (large libraries take a while to open)."
+            },
+            {
+              "pt": "As mensagens do serviço de fundo (página Actividade) também em inglês.",
+              "en": "Background service messages (Activity page) are also in English."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "versao": "0.10.0-beta",
       "data": {
         "pt": "11 de Outubro de 2026",

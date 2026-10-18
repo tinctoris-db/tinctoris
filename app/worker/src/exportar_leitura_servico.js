@@ -16,6 +16,7 @@ import { PASTAS } from './config.js'
 import { foraDasProtegidas } from './exportar_leitura.js'
 import { comPrioridade } from './intensidade.js'
 import { log } from './registo.js'
+import { m, erro, traduzivel } from './mensagens.js'
 
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'exportar_leitura.js')
 const FICHEIRO = path.join(PASTAS.dados, 'exportar-leitura.json')
@@ -39,11 +40,11 @@ const real = (p) => {
 // (a comparação ignora maiúsculas e formas Unicode, como o disco do Mac: foraDasProtegidas em exportar_leitura.js)
 export function validarDestino(destino) {
   let d = String(destino || '').trim()
-  if (!d || d.includes('\0') || !path.isAbsolute(d)) throw new Error('Escolha um disco da lista ou escreva o caminho completo da pasta (começa por /).')
+  if (!d || d.includes('\0') || !path.isAbsolute(d)) throw erro('Escolha um disco da lista ou escreva o caminho completo da pasta (começa por /).')
   d = path.resolve(d)
   const pai = path.dirname(d)
-  if (!fs.existsSync(pai)) throw new Error(`A pasta onde ficaria a cópia não existe (o disco está ligado?): ${pai}`)
-  if (!foraDasProtegidas(d)) throw new Error('A cópia não pode ficar dentro da pasta do TINCTORIS (nem a pasta do TINCTORIS dentro da cópia).')
+  if (!fs.existsSync(pai)) throw erro('A pasta onde ficaria a cópia não existe (o disco está ligado?): {pai}', { pai })
+  if (!foraDasProtegidas(d)) throw erro('A cópia não pode ficar dentro da pasta do TINCTORIS (nem a pasta do TINCTORIS dentro da cópia).')
   return d
 }
 
@@ -100,7 +101,7 @@ function lembrarDestino(destino) {
     fs.mkdirSync(path.dirname(FICHEIRO), { recursive: true })
     fs.writeFileSync(FICHEIRO, JSON.stringify({ destino }, null, 2))
   } catch (e) {
-    log.aviso(`Cópia de leitura: destino não guardado (${e.message})`)
+    log.aviso(m('Cópia de leitura: destino não guardado ({erro})', { erro: traduzivel(e) }))
   }
 }
 
@@ -117,7 +118,8 @@ function tratar(o) {
       trabalho.resultado = o
     }
   } else if (o.tipo === 'erro') {
-    trabalho.erro = { mensagem: o.mensagem, codigo: o.codigo || '' }
+    // (mensagem_t: a mesma mensagem com a chave traduzível, quando o exportador a mandou)
+    trabalho.erro = { mensagem: o.mensagem, mensagem_t: { msg: o.mensagem, ...(o.chave ? { chave: o.chave, ...(o.vars ? { vars: o.vars } : {}) } : {}) }, codigo: o.codigo || '' }
     trabalho.estado = o.codigo === 'interrompido' ? 'parado_pelo_utilizador' : 'erro'
   }
 }
@@ -151,7 +153,8 @@ function lancar(destino, aplicar, confirmarApagar) {
   f.stderr.on('data', (d) => (erros = (erros + d).slice(-2000)))
   f.stdin.on('error', () => {})
   f.on('error', (e) => {
-    trabalho.erro = { mensagem: `Não foi possível lançar o exportador: ${e.message}`, codigo: '' }
+    const x = m('Não foi possível lançar o exportador: {erro}', { erro: traduzivel(e) })
+    trabalho.erro = { mensagem: x.msg, mensagem_t: x, codigo: '' }
     trabalho.estado = 'erro'
   })
   f.on('close', (codigo, sinal) => {
@@ -165,13 +168,17 @@ function lancar(destino, aplicar, confirmarApagar) {
       if (pedidoParar) trabalho.estado = 'parado_pelo_utilizador'
       else {
         trabalho.estado = 'erro'
-        trabalho.erro = { mensagem: `O exportador terminou sem acabar (${sinal || 'código ' + codigo}).${erros.trim() ? ' ' + erros.trim().split('\n').pop() : ''}`, codigo: '' }
+        const x = m('O exportador terminou sem acabar ({causa}).{detalhe}', {
+          causa: sinal || m('código {codigo}', { codigo }),
+          detalhe: erros.trim() ? ' ' + erros.trim().split('\n').pop() : '',
+        })
+        trabalho.erro = { mensagem: x.msg, mensagem_t: x, codigo: '' }
       }
     }
     trabalho.fim = Date.now()
-    if (trabalho.estado === 'feito') log.info(`Cópia de leitura em ${destino}: ${trabalho.resultado.copiados} copiados, ${trabalho.resultado.apagados} apagados, ${trabalho.resultado.nErros} erros (${trabalho.resultado.segundos} s).`)
-    else if (trabalho.estado === 'erro') log.erro(`Cópia de leitura em ${destino}: ${trabalho.erro?.mensagem}`)
-    else if (trabalho.estado === 'parado_pelo_utilizador') log.info(`Cópia de leitura em ${destino}: parada pelo utilizador.`)
+    if (trabalho.estado === 'feito') log.info(m('Cópia de leitura em {destino}: {copiados} copiados, {apagados} apagados, {n} erros ({segundos} s).', { destino, copiados: trabalho.resultado.copiados, apagados: trabalho.resultado.apagados, n: trabalho.resultado.nErros, segundos: trabalho.resultado.segundos }))
+    else if (trabalho.estado === 'erro') log.erro(m('Cópia de leitura em {destino}: {erro}', { destino, erro: trabalho.erro?.mensagem_t || trabalho.erro?.mensagem }))
+    else if (trabalho.estado === 'parado_pelo_utilizador') log.info(m('Cópia de leitura em {destino}: parada pelo utilizador.', { destino }))
   })
 }
 
@@ -183,7 +190,7 @@ export async function estado() {
 }
 
 export async function simular({ destino } = {}) {
-  if (ocupado()) throw new Error('Já há uma cópia de leitura a decorrer.')
+  if (ocupado()) throw erro('Já há uma cópia de leitura a decorrer.')
   const d = validarDestino(destino)
   lembrarDestino(d)
   trabalho = { estado: 'a_simular', destino: d, progresso: { tipo: 'progresso', fase: 'planear', feitos: 0, total: 0 }, inicio: Date.now() }
@@ -192,16 +199,16 @@ export async function simular({ destino } = {}) {
 }
 
 export async function aplicar({ destino, confirmarApagar } = {}) {
-  if (ocupado()) throw new Error('Já há uma cópia de leitura a decorrer.')
+  if (ocupado()) throw erro('Já há uma cópia de leitura a decorrer.')
   const d = validarDestino(destino)
-  if (trabalho.estado !== 'simulado' || trabalho.destino !== d || !trabalho.plano) throw new Error('Veja primeiro o que vai mudar nesta pasta («Ver o que vai mudar»).')
+  if (trabalho.estado !== 'simulado' || trabalho.destino !== d || !trabalho.plano) throw erro('Veja primeiro o que vai mudar nesta pasta («Ver o que vai mudar»).')
   const pl = trabalho.plano
-  if (pl.amostraSobreCompleta) throw new Error('Esta pasta tem uma cópia completa: uma amostra não a pode actualizar.')
+  if (pl.amostraSobreCompleta) throw erro('Esta pasta tem uma cópia completa: uma amostra não a pode actualizar.')
   const confirmado = confirmarApagar != null && String(confirmarApagar).trim() !== '' ? Number(confirmarApagar) : null
   if (pl.precisaConfirmacaoForte && confirmado !== pl.nApagar)
-    throw new Error(`Esta actualização apaga ${pl.nApagar.toLocaleString('pt-PT')} ficheiros do disco: para confirmar, escreva o número ${pl.nApagar}. Nada foi alterado.`)
+    throw erro('Esta actualização apaga {n} ficheiros do disco: para confirmar, escreva o número {numero}. Nada foi alterado.', { n: pl.nApagar.toLocaleString('pt-PT'), numero: pl.nApagar })
   trabalho = { estado: 'a_copiar', destino: d, plano: pl, progresso: { tipo: 'progresso', fase: 'planear', feitos: 0, total: 0 }, inicio: Date.now() }
-  log.info(`Cópia de leitura: a actualizar ${d}…`)
+  log.info(m('Cópia de leitura: a actualizar {destino}…', { destino: d }))
   lancar(d, true, pl.precisaConfirmacaoForte ? confirmado : null)
   return estado()
 }

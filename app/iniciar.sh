@@ -82,5 +82,13 @@ echo ""
 echo "   Para parar: feche esta janela ou carregue Ctrl+C."
 echo ""
 
+# Cópia de segurança num disco externo (só para quem já fez uma: «Copiar para … .command» grava a data)
+ULTIMA_COPIA="$APP/registos/ultima-copia-externa.txt"
+if [[ -f "$ULTIMA_COPIA" && -n "$(find "$ULTIMA_COPIA" -mtime +7 2>/dev/null)" ]]; then
+  echo "   \033[31mA última cópia de segurança no disco externo é de $(cat "$ULTIMA_COPIA"): há mais de 7 dias.\033[0m"
+  echo "   Ligue o disco e faça duplo clique em «Copiar para Senhor das Trevas.command»."
+  echo ""
+fi
+
 [[ -z "$SEM_NAVEGADOR" ]] && open "http://127.0.0.1:$PB_PORTA"
 wait $PB_PID

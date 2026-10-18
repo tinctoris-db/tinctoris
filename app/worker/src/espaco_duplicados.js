@@ -24,6 +24,7 @@ import { spawn } from 'node:child_process'
 import { PASTAS, DUPLICADOS, ORIGINAIS, BIN } from './config.js'
 import { pb, garantirSessao, definicoes } from './pb.js'
 import { log } from './registo.js'
+import { m, erro, traduzivel } from './mensagens.js'
 import { compararFicheiros, maisParecidaPelaCapa, guardarImpressoes } from './duplicados.js'
 
 const RAIZ_DUP = path.join(PASTAS.biblioteca, DUPLICADOS)
@@ -43,7 +44,7 @@ export function registarOrigem(destino, info) {
     fs.mkdirSync(path.dirname(ORIGENS), { recursive: true })
     fs.appendFileSync(ORIGENS, JSON.stringify({ ficheiro: rel(destino), quando: new Date().toISOString(), ...info }) + '\n')
   } catch (e) {
-    log.aviso(`Origem do duplicado não registada: ${e.message}`)
+    log.aviso(m('Origem do duplicado não registada: {erro}', { erro: traduzivel(e) }))
   }
 }
 
@@ -202,6 +203,12 @@ async function hash(p) {
 
 let emCurso = null
 
+// A fase em curso: o texto português (fase) e a mensagem traduzível (fase_t)
+function porFase(t) {
+  emCurso.fase = t.msg
+  emCurso.fase_t = t
+}
+
 function lerResultado() {
   try {
     return JSON.parse(fs.readFileSync(RESULTADO, 'utf8'))
@@ -220,9 +227,9 @@ function resumo() {
 // Corre em segundo plano; o estado (fase, n de total) fica em `emCurso` até acabar
 export function verificar() {
   if (emCurso) return emCurso
-  emCurso = { fase: 'A começar', feitos: 0, total: 0 }
+  emCurso = { fase: 'A começar', fase_t: m('A começar'), feitos: 0, total: 0 }
   executarVerificacao()
-    .catch((e) => log.erro(`Verificação de _duplicados: ${e.message}`))
+    .catch((e) => log.erro(m('Verificação de _duplicados: {erro}', { erro: traduzivel(e) })))
     .finally(() => (emCurso = null))
   return emCurso
 }
@@ -249,7 +256,7 @@ async function executarVerificacao() {
   const dup = [...todos(RAIZ_DUP)]
   const ori = [...todos(path.join(PASTAS.biblioteca, ORIGINAIS))]
   emCurso.total = dup.length + ori.length
-  emCurso.fase = 'A comparar o conteúdo dos ficheiros (a 1.ª vez demora; depois é rápido)'
+  porFase(m('A comparar o conteúdo dos ficheiros (a 1.ª vez demora; depois é rápido)'))
   const hd = new Map()
   const ho = new Map()
   let i = 0
@@ -269,7 +276,7 @@ async function executarVerificacao() {
   const dupPorHash = new Map()
   for (const p of dup) if (hd.has(p)) juntar(dupPorHash, hd.get(p), p)
 
-  emCurso.fase = 'A confirmar as cópias na biblioteca'
+  porFase(m('A confirmar as cópias na biblioteca'))
   const confirmados = new Map()
   async function naBiblioteca(h) {
     for (const x of porHash.get(h) || []) {
@@ -310,7 +317,7 @@ async function executarVerificacao() {
   await gravarCache()
 
   // Porque está aqui e com que ficha se confundiu; páginas iguais às dessa ficha → seguro
-  emCurso.fase = 'A comparar as páginas com as fichas'
+  porFase(m('A comparar as páginas com as fichas'))
   emCurso.feitos = 0
   emCurso.total = porVer.length
   const comparados = await compararComFichas(porVer, fichas, { aoProgresso: (n) => (emCurso.feitos = n) })
@@ -323,7 +330,7 @@ async function executarVerificacao() {
   await fsp.writeFile(RESULTADO + '.tmp', JSON.stringify({ feita_em: new Date().toISOString(), seguros, por_ver: porVer, decididos: lerResultado()?.decididos || {} }))
   await fsp.rename(RESULTADO + '.tmp', RESULTADO)
   await medir()
-  log.info(`Verificação de _duplicados: ${seguros.length} seguros, ${porVer.length} por ver`)
+  log.info(m('Verificação de _duplicados: {seguros} seguros, {por_ver} por ver', { seguros: seguros.length, por_ver: porVer.length }))
 }
 
 // Para cada "por ver": origem (registo), a ficha com que se confundiu e a comparação das páginas com o ficheiro dela.
@@ -387,7 +394,7 @@ export async function compararComFichas(porVer, fichas, { aoProgresso = () => {}
 // Duas páginas lado a lado (a página p do ficheiro de _duplicados e a mesma da ficha com que se confundiu)
 export async function compararPagina({ ficheiro, numero, p = 1 }) {
   const abs = path.join(PASTAS.biblioteca, String(ficheiro || ''))
-  if (!dentroDe(abs, RAIZ_DUP) || !fs.existsSync(abs)) throw new Error('Ficheiro não encontrado em _duplicados.')
+  if (!dentroDe(abs, RAIZ_DUP) || !fs.existsSync(abs)) throw erro('Ficheiro não encontrado em _duplicados.')
   const pg = Math.max(1, Number(p) || 1)
   const res = { duplicado: await imagemPagina(abs, pg) }
   if (numero) {
@@ -417,7 +424,7 @@ export function pastaDoLixo(nome = 'Duplicados') {
   // (no disco externo, o Lixo do Mac para esse disco é .Trashes/<uid>; mover para lá é instantâneo)
   // (a cópia de teste usa LIXO_DIR, para não pôr nada no Lixo verdadeiro do Pedro)
   const lixo = process.env.LIXO_DIR || (volume ? path.join(volume, '.Trashes', String(uid)) : path.join(os.homedir(), '.Trash'))
-  if (!fs.existsSync(lixo)) throw new Error(`Não encontrei o Lixo do Mac em ${lixo}.`)
+  if (!fs.existsSync(lixo)) throw erro('Não encontrei o Lixo do Mac em {lixo}.', { lixo })
   const d = new Date()
   const carimbo = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`
   return path.join(lixo, `${nome} ${carimbo}`)
@@ -442,7 +449,7 @@ async function limparVazias(dir) {
 // Pôr no Lixo: todos os "seguros" (ficheiros omitido) ou os "por ver" indicados pelo Pedro, um a um
 export async function porNoLixo({ ficheiros } = {}) {
   const r = lerResultado()
-  if (!r) throw new Error('Faça primeiro a verificação.')
+  if (!r) throw erro('Faça primeiro a verificação.')
   const lixo = pastaDoLixo()
   const escolhidos = ficheiros ? r.por_ver.filter((x) => ficheiros.includes(x.ficheiro)) : r.seguros
   let movidos = 0
@@ -471,7 +478,14 @@ export async function porNoLixo({ ficheiros } = {}) {
   r.seguros = r.seguros.filter((x) => !fora.has(x.ficheiro))
   r.por_ver = r.por_ver.filter((x) => !fora.has(x.ficheiro))
   await fsp.writeFile(RESULTADO, JSON.stringify(r))
-  log.info(`${movidos} duplicados postos no Lixo do Mac (${(bytes / 1e9).toFixed(1)} GB) em ${lixo}${saltados.length ? `; ${saltados.length} saltados (mudaram desde a verificação)` : ''}`)
+  log.info(
+    m('{movidos} duplicados postos no Lixo do Mac ({gb} GB) em {lixo}{resto}', {
+      movidos,
+      gb: (bytes / 1e9).toFixed(1),
+      lixo,
+      resto: saltados.length ? m('; {n} saltados (mudaram desde a verificação)', { n: saltados.length }) : '',
+    })
+  )
   await medir()
   return { movidos, bytes, saltados: saltados.length, lixo: path.basename(lixo) }
 }
@@ -479,7 +493,7 @@ export async function porNoLixo({ ficheiros } = {}) {
 // Um "por ver" que afinal é uma fonte: volta à watch folder (fica com ficha própria)
 export async function devolver({ ficheiro }) {
   const abs = path.join(PASTAS.biblioteca, String(ficheiro || ''))
-  if (!dentroDe(abs, RAIZ_DUP) || !fs.existsSync(abs)) throw new Error('Ficheiro não encontrado em _duplicados.')
+  if (!dentroDe(abs, RAIZ_DUP) || !fs.existsSync(abs)) throw erro('Ficheiro não encontrado em _duplicados.')
   let alvo = path.join(PASTAS.watch, path.basename(abs))
   for (let i = 2; fs.existsSync(alvo); i++) alvo = path.join(PASTAS.watch, path.basename(abs).replace(/(\.[^.]+)?$/, `_${i}$1`))
   await fsp.rename(abs, alvo).catch(async (e) => {
@@ -487,14 +501,14 @@ export async function devolver({ ficheiro }) {
     await fsp.copyFile(abs, alvo)
     await fsp.unlink(abs)
   })
-  log.info(`Devolvido à watch folder: ${ficheiro}`)
+  log.info(m('Devolvido à watch folder: {ficheiro}', { ficheiro }))
   return { ok: true }
 }
 
 // "Manter em _duplicados" (não volta a aparecer na lista por ver)
 export async function manter({ ficheiro }) {
   const r = lerResultado()
-  if (!r) throw new Error('Faça primeiro a verificação.')
+  if (!r) throw erro('Faça primeiro a verificação.')
   r.decididos = { ...(r.decididos || {}), [ficheiro]: 'manter' }
   await fsp.writeFile(RESULTADO, JSON.stringify(r))
   return { ok: true }
@@ -503,7 +517,7 @@ export async function manter({ ficheiro }) {
 // Abrir no Mac (Pré-visualização) ou mostrar no Finder — só funciona no próprio Mac da biblioteca
 export async function abrir({ ficheiro, finder }) {
   const abs = path.join(PASTAS.biblioteca, String(ficheiro || ''))
-  if (!dentroDe(abs, PASTAS.biblioteca) || !fs.existsSync(abs)) throw new Error('Ficheiro não encontrado.')
+  if (!dentroDe(abs, PASTAS.biblioteca) || !fs.existsSync(abs)) throw erro('Ficheiro não encontrado.')
   spawn('open', finder ? ['-R', abs] : [abs], { detached: true, stdio: 'ignore' }).unref()
   return { ok: true }
 }

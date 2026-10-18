@@ -22,10 +22,14 @@ import { imslpPagina, correcoesImslp, PECA } from './fontes_externas/imslp_pagin
 import { iaDisponivel, lerComIA, PAGINA_DE_AVISO } from './ia.js'
 import { gerarPalavrasChave, palavrasUteis } from './palavras.js'
 import { log } from './registo.js'
+import { m, erro, traduzivel } from './mensagens.js'
 import { CHAVE_ESTADO_ANTES, marcarReanalise, estadoAntesDaReanalise, continuaCompleta, compositoresConhecidos, ajustarCandidatos, trocaAceitavel, contradicaoForma, registoManuscrito, edicaoModernaPara, dataMaisPrecisa, TIPOS_ACADEMICOS, autoresAcademicos } from './regras_identificacao.js'
 import { esperarVez, folgaEntreReanalises, emPoupanca, emPausa } from './intensidade.js'
 import { compararFicheiros, acrescentarDuvidoso } from './duplicados.js'
 import { registarOrigem } from './espaco_duplicados.js'
+import { fichaFinale, metadadosMusx, ETIQUETA_FINALE } from './finale.js'
+import { fichaTranscricaoPdf, chavesDoNome, chaveComSentido, ePdfDeEditorDePartituras, ETIQUETA_TRANSCRICAO } from './transcricao_pdf.js'
+import { reconhecerBga, tituloBga, ETIQUETA_BGA } from './bga.js'
 
 // Fila sequencial: um ficheiro de cada vez. Se entrarem muitos de uma vez
 // (ex.: uma pasta enorme largada por engano), fica em pausa até confirmar.
@@ -57,7 +61,7 @@ function criarFila(nome, trabalho) {
       try {
         await trabalho(ativo)
       } catch (e) {
-        log.erro(`${nome} (${path.basename(String(ativo))}): ${e.message}`)
+        log.erro(m('{fila} ({ficheiro}): {erro}', { fila: nome, ficheiro: path.basename(String(ativo)), erro: traduzivel(e) }))
       }
       if (itens.length && !prioritarios.has(itens[0])) await folgaEntreReanalises(() => prioritarios.has(itens[0]))
     }
@@ -83,7 +87,7 @@ function criarFila(nome, trabalho) {
       if (confirmado) confirmada = true
       if (!confirmada && !pausada && itens.length > LIMITE_LOTE) {
         pausada = true
-        log.aviso(`Entraram mais de ${LIMITE_LOTE} ficheiros de uma vez: o processamento está em pausa até confirmar na página Actividade.`)
+        log.aviso(m('Entraram mais de {limite} ficheiros de uma vez: o processamento está em pausa até confirmar na página Actividade.', { limite: LIMITE_LOTE }))
       }
       correr()
     },
@@ -131,7 +135,7 @@ function registoDoDoi(candidatos, doi, texto) {
 // (uma folha do JSTOR relida dá o mesmo ou melhor: não protege a ficha contra a reanálise)
 const ORIGEM_FRACA = /^(IA local|ficheiro|capa do PDF|capa do JSTOR)?$/
 // Catálogos de livros e artigos modernos: não identificam fotografias de páginas nem manuscritos
-const CATALOGOS_MODERNOS = /^(CrossRef|Open Library|OpenAlex|OpenAIRE|DataCite)\b/
+const CATALOGOS_MODERNOS = /^(CrossRef|Open Library|OpenAlex|OpenAIRE|DataCite|Google Books|Semantic Scholar)\b/
 // Metadados que não vêm de nenhum catálogo (ligações da própria biblioteca): passam sempre
 // (exemplar_papel: «Onde está o exemplar em papel», escrito só pelo utilizador)
 const PROPRIOS = ['originais', 'originais_conjunto', 'transcricao_midi', 'transcricao', 'herdado_de', 'nomes_alternativos', 'duplicados_retirados', 'nota_revisao', 'exemplar_papel']
@@ -219,7 +223,7 @@ export async function porDeLado(caminho) {
   if (!fs.existsSync(caminho)) return
   const rel = path.relative(PASTAS.watch, caminho)
   await F.mover(caminho, path.join(PASTAS.naoProcessados, path.dirname(rel)), path.basename(caminho))
-  if (++contadorLado <= 20 || contadorLado % 500 === 0) log.aviso(`Não é uma fonte: ${rel} → nao_processados/${contadorLado > 20 ? ` (${contadorLado} até agora)` : ''}`)
+  if (++contadorLado <= 20 || contadorLado % 500 === 0) log.aviso(contadorLado > 20 ? m('Não é uma fonte: {rel} → nao_processados/ ({n} até agora)', { rel, n: contadorLado }) : m('Não é uma fonte: {rel} → nao_processados/', { rel }))
   await F.limparPastasVazias(path.dirname(caminho), PASTAS.watch)
 }
 
@@ -269,6 +273,8 @@ async function lerFicheiro(caminho, categoria, defs, nomeReal) {
     // (programa que criou o PDF: Finale, Sibelius… = transcrição; Pré-visualização, scanner… = digitalização)
     info.programaPdf = pi.programa
     info.autorPdf = pi.autor
+    info.tituloPdf = pi.titulo
+    info.produtorPdf = pi.produtor
     meta = { titulo: X.tituloPdfUtil(pi.titulo) ? pi.titulo : '', autor: X.autorPdfUtil(pi.autor), editora: X.editoraPdf(pi.autor), assunto: X.assuntoUtil(pi.assunto) }
     // Pistas para a IA local: o que o ficheiro diz sobre si fora da página
     info.pistas = [nomeReal && `Original file name: ${nomeReal}`, pi.titulo && `PDF title: ${pi.titulo}`, pi.assunto && `PDF subject: ${pi.assunto}`, pi.autor && `PDF author: ${pi.autor}`].filter(Boolean).join('\n')
@@ -488,7 +494,7 @@ async function originaisParaDuplicados(orig) {
     return
   } catch (_) {}
   const destino = await F.mover(abs, path.join(PASTAS.biblioteca, DUPLICADOS), `${path.basename(abs)} - originais`)
-  log.aviso(`Originais repetidos: ${orig.originais} → ${relativo(destino)}`)
+  log.aviso(m('Originais repetidos: {originais} → {destino}', { originais: orig.originais, destino: relativo(destino) }))
   registarOrigem(destino, { motivo: 'originais_repetidos' })
 }
 
@@ -522,7 +528,7 @@ async function processarFicheiro(caminho) {
     if (dono) {
       if ((dono.ficheiros_extra || []).some((x) => x.ficheiro === relativo(caminho))) return
       const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
-      log.aviso(`Duplicado de um ficheiro de «${dono.titulo}»: movido para ${relativo(destino)}`)
+      log.aviso(m('Duplicado de um ficheiro de «{titulo}»: movido para {destino}', { titulo: dono.titulo, destino: relativo(destino) }))
       registarOrigem(destino, { motivo: 'copia_exata_extra', numero: dono.numero, titulo: dono.titulo })
       await originaisParaDuplicados(orig)
       await F.limparPastasVazias(path.dirname(caminho), raiz)
@@ -532,14 +538,14 @@ async function processarFicheiro(caminho) {
   if (existente && existente.ficheiro && existente.estado !== 'processando') {
     if (existente.ficheiro === relativo(caminho)) return // é o próprio ficheiro (releitura da biblioteca)
     const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
-    log.aviso(`Duplicado de «${existente.titulo}»: movido para ${relativo(destino)}`)
+    log.aviso(m('Duplicado de «{titulo}»: movido para {destino}', { titulo: existente.titulo, destino: relativo(destino) }))
     registarOrigem(destino, { motivo: 'copia_exata', numero: existente.numero, titulo: existente.titulo })
     await originaisParaDuplicados(orig)
     await F.limparPastasVazias(path.dirname(caminho), raiz)
     try {
       await aproveitarNomeDoRepetido(existente, nomeOriginal)
     } catch (e) {
-      log.aviso(`Nome do repetido não aproveitado: ${e.message}`)
+      log.aviso(m('Nome do repetido não aproveitado: {erro}', { erro: traduzivel(e) }))
     }
     return
   }
@@ -551,7 +557,7 @@ async function processarFicheiro(caminho) {
     } catch (_) {}
     if (igual) {
       const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
-      log.aviso(`As mesmas fotografias de «${igual.titulo}» (#${String(igual.numero || '').padStart(4, '0')}): movidas para ${relativo(destino)}`)
+      log.aviso(m('As mesmas fotografias de «{titulo}» (#{numero}): movidas para {destino}', { titulo: igual.titulo, numero: String(igual.numero || '').padStart(4, '0'), destino: relativo(destino) }))
       registarOrigem(destino, { motivo: 'mesmas_fotografias', numero: igual.numero, titulo: igual.titulo })
       await originaisParaDuplicados(orig)
       await F.limparPastasVazias(path.dirname(caminho), raiz)
@@ -567,11 +573,22 @@ async function processarFicheiro(caminho) {
     const lote = await fichaDoLote(chaveLote(nomeOriginal), ext)
     if (lote && lote.estado !== 'processando') return juntarAoLote(lote, caminho, hash, nomeOriginal, raiz)
   }
-  log.info(`A ler: ${nomeOriginal}`)
+  // Ficheiros do Finale (.mus, .musx): só a ficha interna do .musx e o nome do ficheiro dizem o que são (Pedro, 17/10/2026)
+  // (uma ficha já identificada num catálogo ou feita à mão segue o caminho normal)
+  if (/\.musx?$/i.test(caminho) && (!existente || ORIGEM_FRACA.test(existente.origem || ''))) return processarFinale({ caminho, hash, nomeOriginal, existente, estadoAntes, defs, raiz, ext })
+  log.info(m('A ler: {ficheiro}', { ficheiro: nomeOriginal }))
 
   // (numa reanálise: o nome mais informativo entre o original e os dos repetidos que entraram depois)
   const nomeReal = existente ? melhorNome([existente.ficheiro_original, ...nomesAlternativos(existente)], catalogoDe) || nomeOriginal : nomeOriginal
   const info = await lerFicheiro(caminho, categoria, defs, nomeReal)
+  // Regras próprias para PDFs (Pedro, 17/10/2026): a Bach-Gesellschaft-Ausgabe e as impressões de transcrições feitas
+  // num editor de partituras (uma ficha já identificada num catálogo ou feita à mão segue o caminho normal)
+  if (categoria === 'pdf' && !orig && (!existente || ORIGEM_FRACA.test(existente.origem || ''))) {
+    const rec = reconhecerBga({ nome: nomeReal, pdfTitulo: info.tituloPdf, pdfAutor: info.autorPdf, programa: info.programaPdf, produtor: info.produtorPdf, texto: info.inicio, titulo: existente?.titulo || '' })
+    const comum = { caminho, hash, nomeOriginal, nomeReal, existente, estadoAntes, defs, raiz, ext, info }
+    if (rec && rec.tipo !== 'nba') return processarBga({ ...comum, rec })
+    if (ePdfDeEditorDePartituras(info.programaPdf)) return processarTranscricaoPdf(comum)
+  }
   const pesquisaTexto = `${nomeOriginal}\n${info.inicio}`
   const doi = info.doi || X.encontrarDoi(pesquisaTexto)
   const isbn = X.encontrarIsbn(pesquisaTexto)
@@ -595,7 +612,7 @@ async function processarFicheiro(caminho) {
         if (!info.ano && doNome.anoAntigo && a.conhecido) info.ano = doNome.anoAntigo
       }
     } catch (e) {
-      log.aviso(`Autor pelo nome de «${nomeOriginal}»: ${e.message}`)
+      log.aviso(m('Autor pelo nome de «{ficheiro}»: {erro}', { ficheiro: nomeOriginal, erro: traduzivel(e) }))
     }
   }
   // (fotografias de páginas: o nome do dono no PDF de visualização/digitalização não é o autor — ver mais abaixo)
@@ -618,7 +635,7 @@ async function processarFicheiro(caminho) {
       try {
         ia = await lerComIA(caminho, categoria, defs, { pagina, pistas: info.pistas || (nomeReal ? `Original file name: ${nomeReal}` : '') })
       } catch (e) {
-        log.aviso(`IA local não conseguiu ler «${nomeOriginal}» (página ${pagina}): ${e.message}`)
+        log.aviso(m('IA local não conseguiu ler «{ficheiro}» (página {pagina}): {erro}', { ficheiro: nomeOriginal, pagina, erro: traduzivel(e) }))
         ia = null
       }
       if (ia?.titulo && !PAGINA_DE_AVISO.test(ia.titulo) && !/^(contents|[íi]ndice|table of contents|preface|index)$/i.test(ia.titulo)) break
@@ -767,7 +784,7 @@ async function processarFicheiro(caminho) {
       try {
         exemplar = await completarExemplar(exemplar, defs.email_contacto, { texto: info.inicio.split('\f').slice(0, 2).join('\n'), titulos: info.titulos, europeana: defs.europeana_api_key })
       } catch (e) {
-        log.aviso(`Registo do exemplar (${exemplar.biblioteca || exemplar.identificador}): ${e.message}`)
+        log.aviso(m('Registo do exemplar ({exemplar}): {erro}', { exemplar: exemplar.biblioteca || exemplar.identificador, erro: traduzivel(e) }))
       }
     }
   }
@@ -791,12 +808,12 @@ async function processarFicheiro(caminho) {
       const r = await pesquisarMusical({ titulo: info.titulos[0], tituloAlt: nomeMus.titulo, autor: apelido || nomeMus.autor || pistaCompositor, ano: anoPista, sigla: sigla?.sigla || (doExemplar ? exemplar.sigla : undefined), cota: cota || (doExemplar ? exemplar.cota : ''), forma, exemplar, cotaDoNome: !!(sigla && cota) }, defs.email_contacto, { europeana: defs.europeana_api_key })
       outrosCatalogos = r.outros || []
       outrasDigitalizacoes = r.digitalizacoes || []
-      if (r.erros.length) log.aviso(`Algumas fontes de metadados falharam: ${r.erros.join('; ')}`)
+      if (r.erros.length) log.aviso(m('Algumas fontes de metadados falharam: {erros}', { erros: r.erros.join('; ') }))
       r.candidatos = ajustar(r.candidatos)
       candidatos = r.candidatos.slice(0, 10)
       escolhido = E.escolher(r.candidatos, limiar)
     } catch (e) {
-      log.aviso(`Pesquisa no RISM/DIAMM falhou: ${e.message}`)
+      log.aviso(m('Pesquisa no RISM/DIAMM falhou: {erro}', { erro: traduzivel(e) }))
     }
   }
 
@@ -817,13 +834,13 @@ async function processarFicheiro(caminho) {
     for (const titulo of info.titulos.slice(0, 2)) {
       try {
         const r = await E.automatico({ genero: generoPesquisa, titulo, autor: apelido || info.compositor || pistaCompositor, artista: info.artista, doi, isbn, paginas: info.paginas }, defs)
-        if (r.erros.length) log.aviso(`Algumas fontes de metadados falharam: ${r.erros.join('; ')}`)
+        if (r.erros.length) log.aviso(m('Algumas fontes de metadados falharam: {erros}', { erros: r.erros.join('; ') }))
         r.candidatos = ajustar(r.candidatos)
         candidatos = E.juntarCandidatos(candidatos, r.candidatos)
         escolhido = E.escolher(r.candidatos, limiar) || registoDoDoi(r.candidatos, doi, `${info.inicio}\n${String(info.texto).slice(0, 30000)}`)
         if (escolhido || doi || isbn) break
       } catch (e) {
-        log.aviso(`Pesquisa de metadados falhou: ${e.message}`)
+        log.aviso(m('Pesquisa de metadados falhou: {erro}', { erro: traduzivel(e) }))
       }
     }
   }
@@ -836,18 +853,19 @@ async function processarFicheiro(caminho) {
   }
 
   // Fotografias de páginas e manuscritos não são livros nem artigos modernos: o que o CrossRef, a Open Library, o
-  // OpenAlex, o OpenAIRE ou o DataCite encontrem fica só como sugestão (por rever), nunca «completo»
-  const fotografada = !!orig || nomeComCota || forma === 'manuscrito' || nomeTipo === 'Manuscrito'
+  // OpenAlex, o OpenAIRE, o DataCite, o Google Books ou o Semantic Scholar encontrem fica só como sugestão (por rever),
+  // nunca «completo». (Uma imagem solta também é uma fotografia: «2-1_2.jpg» do Rossi de 1608 ficou «artigo de 1980»)
+  const fotografada = !!orig || categoria === 'imagem' || nomeComCota || forma === 'manuscrito' || nomeTipo === 'Manuscrito'
   if (escolhido && fotografada && CATALOGOS_MODERNOS.test(escolhido.fonte || '')) {
     notas.push(`${escolhido.fonte} sugeria «${escolhido.titulo}»${escolhido.data ? ` (${escolhido.data})` : ''}: não aceite, é uma fonte fotografada ou manuscrita.`)
-    log.info(`«${nomeOriginal}»: ${escolhido.fonte} sugere «${escolhido.titulo}», mas é uma fonte fotografada/manuscrita — fica como sugestão`)
+    log.info(m('«{ficheiro}»: {catalogo} sugere «{titulo}», mas é uma fonte fotografada/manuscrita — fica como sugestão', { ficheiro: nomeOriginal, catalogo: escolhido.fonte, titulo: escolhido.titulo }))
     escolhido = null
   }
   // Texto do dono (o PDF diz que é dele e não saiu de um editor de partituras nem de digitalizações): um catálogo que
   // não o tem como autor é outra obra com um título parecido («ANEXO revisto FINAL» ≠ um capítulo de 2012)
   if (escolhido && !fotografada && eDoDono(info.autorPdf || '') && !pdfDeTerceiros && !(escolhido.autores || []).some(eDoDono)) {
     notas.push(`${escolhido.fonte} sugeria «${escolhido.titulo}»${escolhido.data ? ` (${escolhido.data})` : ''}: não aceite, o PDF é do dono da biblioteca e o catálogo não o tem como autor.`)
-    log.info(`«${nomeOriginal}»: ${escolhido.fonte} sugere «${escolhido.titulo}», mas o PDF é do dono e o catálogo não o tem como autor — fica como sugestão`)
+    log.info(m('«{ficheiro}»: {catalogo} sugere «{titulo}», mas o PDF é do dono e o catálogo não o tem como autor — fica como sugestão', { ficheiro: nomeOriginal, catalogo: escolhido.fonte, titulo: escolhido.titulo }))
     escolhido = null
   }
 
@@ -1044,7 +1062,7 @@ async function processarFicheiro(caminho) {
           }
         }
       } catch (e) {
-        log.aviso(`IMSLP (título normalizado): ${e.message}`)
+        log.aviso(m('IMSLP (título normalizado): {erro}', { erro: traduzivel(e) }))
       }
     }
   }
@@ -1062,7 +1080,7 @@ async function processarFicheiro(caminho) {
           if (!String(md.outros_catalogos || '').includes(f.url)) dados.metadados.outros_catalogos = [md.outros_catalogos, ligacao].filter(Boolean).join('\n')
         }
       } catch (e) {
-        log.aviso(`Fontes conhecidas de ${cat.codigo}: ${e.message}`)
+        log.aviso(m('Fontes conhecidas de {codigo}: {erro}', { codigo: cat.codigo, erro: traduzivel(e) }))
       }
     }
   }
@@ -1086,7 +1104,7 @@ async function processarFicheiro(caminho) {
       try {
         livro = await livroDoCompositor({ apelido, ano: anoNome, chave }, { email: defs.email_contacto, excluirId: fonte.id })
       } catch (e) {
-        log.aviso(`Livro de «${nomeOriginal}» no RISM: ${e.message}`)
+        log.aviso(m('Livro de «{ficheiro}» no RISM: {erro}', { ficheiro: nomeOriginal, erro: traduzivel(e) }))
       }
     }
     const campos = camposDaTranscricao(dados, livro, { formato: formatoNotacao, n, chave, numero: numeroNoLote(nomeReal) })
@@ -1106,7 +1124,7 @@ async function processarFicheiro(caminho) {
       const pagina = await imslpPagina(dados.url, defs.email_contacto)
       if (pagina) Object.assign(dados, correcoesImslp({ ...dados, ficheiro_original: nomeReal }, pagina, { conhecido: await compositorConhecido() }).alt)
     } catch (e) {
-      log.aviso(`IMSLP (página da obra): ${e.message}`)
+      log.aviso(m('IMSLP (página da obra): {erro}', { erro: traduzivel(e) }))
     }
   }
   if (info.local && !dados.local) dados.local = info.local
@@ -1137,7 +1155,10 @@ async function processarFicheiro(caminho) {
       if (semFrontispicio && !existente.metadados?.nota_revisao) delete dados.metadados.nota_revisao
       semFrontispicio = false
     }
-    if (p.mantidos.length) log.info(`Reanálise de «${dados.titulo}»: mantido o que já tinha (${p.mantidos.join(', ')})${p.deCatalogo ? ` — veio de ${existente.origem}` : ''}`)
+    if (p.mantidos.length) {
+      const mantidos = p.mantidos.join(', ')
+      log.info(p.deCatalogo ? m('Reanálise de «{titulo}»: mantido o que já tinha ({mantidos}) — veio de {origem}', { titulo: dados.titulo, mantidos, origem: existente.origem }) : m('Reanálise de «{titulo}»: mantido o que já tinha ({mantidos})', { titulo: dados.titulo, mantidos }))
+    }
   }
   // (o dono como editor de uma transcrição dele não se perde com os autores que um catálogo ou o nome do ficheiro deram)
   const editorDono = autoresFicheiro.find((a) => eDoDono(a) && a.papel === 'editor')
@@ -1202,19 +1223,20 @@ async function processarFicheiro(caminho) {
     if (cmp.resultado === 'igual') {
       await pb.collection('fontes').delete(fonte.id)
       const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
-      log.aviso(`Outra cópia de «${gemea.titulo}» (${numeroGemea}): movida para ${relativo(destino)} (páginas iguais)`)
+      log.aviso(m('Outra cópia de «{titulo}» ({numero}): movida para {destino} (páginas iguais)', { titulo: gemea.titulo, numero: numeroGemea, destino: relativo(destino) }))
       registarOrigem(destino, { motivo: 'mesma_obra', numero: gemea.numero, titulo: gemea.titulo, paginas_iguais: true })
       await F.limparPastasVazias(path.dirname(caminho), raiz)
       return
     }
-    const comoCompara = { parecido: 'as páginas são muito parecidas', diferente: 'as páginas são diferentes', sem_comparacao: 'não foi possível comparar as páginas' }[cmp.resultado]
+    const comoComparaMsg = { parecido: m('as páginas são muito parecidas'), diferente: m('as páginas são diferentes'), sem_comparacao: m('não foi possível comparar as páginas') }[cmp.resultado] || m('não foi possível comparar as páginas')
+    const comoCompara = comoComparaMsg.msg
     const nota = `Identificada como a mesma obra de ${numeroGemea} «${gemea.titulo}», mas ${comoCompara} (${cmp.paginas?.[0] || '?'} e ${cmp.paginas?.[1] || '?'} p.): confirmar se é outra cópia, outra edição ou parte, ou se a identificação está errada.`
     dados.metadados = { ...dados.metadados, nota_revisao: [dados.metadados?.nota_revisao, nota].filter(Boolean).join(' ') }
     if (dados.estado === 'completo') (dados.estado = 'a_rever'), (dados.candidatos = candidatos)
     if (cmp.resultado === 'parecido') {
-      await acrescentarDuvidoso({ a: fonte.id, b: gemea.id, paginas: cmp.paginas, baixa: cmp.baixa, alta: cmp.alta }).catch((e) => log.aviso(`Par para o ecrã Duplicados não guardado: ${e.message}`))
+      await acrescentarDuvidoso({ a: fonte.id, b: gemea.id, paginas: cmp.paginas, baixa: cmp.baixa, alta: cmp.alta }).catch((e) => log.aviso(m('Par para o ecrã Duplicados não guardado: {erro}', { erro: traduzivel(e) })))
     }
-    log.aviso(`Talvez outra cópia de «${gemea.titulo}» (${numeroGemea}), mas ${comoCompara}: fica com ficha própria, por rever`)
+    log.aviso(m('Talvez outra cópia de «{titulo}» ({numero}), mas {motivo}: fica com ficha própria, por rever', { titulo: gemea.titulo, numero: numeroGemea, motivo: comoComparaMsg }))
   }
 
   // Já existe esta obra sem ficheiro (ex.: importada do Mendeley)? Associar em vez de duplicar.
@@ -1249,7 +1271,7 @@ async function processarFicheiro(caminho) {
     }
     await pb.collection('fontes').delete(fonte.id)
     fonte = await pb.collection('fontes').update(alvo.id, junta, { expand: 'tipo' })
-    log.info(`Ficheiro associado à fonte já existente «${fonte.titulo}»`)
+    log.info(m('Ficheiro associado à fonte já existente «{titulo}»', { titulo: fonte.titulo }))
   } else {
     // (reanálise do mesmo ficheiro: o OCR completo já feito — ou a correr — não se repete; a reanálise só lê as
     //  primeiras páginas. Lê-se agora, porque o OCR pode ter acabado enquanto a ficha era reanalisada)
@@ -1270,20 +1292,158 @@ async function processarFicheiro(caminho) {
     try {
       await guardarTexto(fonte.id, info.texto, categoria === 'pdf' ? 'pdf' : 'manual')
     } catch (e) {
-      log.aviso(`Texto integral de «${fonte.titulo}» não guardado: ${e.message}`)
+      log.aviso(m('Texto integral de «{titulo}» não guardado: {erro}', { titulo: fonte.titulo, erro: traduzivel(e) }))
     }
   }
   await F.limparPastasVazias(path.dirname(caminho), raiz)
 
-  log.info(fonte.estado === 'completo' ? `Organizado (${escolhido?.fonte || fonte.origem}): ${fonte.ficheiro}` : `Por rever: ${fonte.ficheiro}`)
+  log.info(fonte.estado === 'completo' ? m('Organizado ({catalogo}): {ficheiro}', { catalogo: escolhido?.fonte || fonte.origem, ficheiro: fonte.ficheiro }) : m('Por rever: {ficheiro}', { ficheiro: fonte.ficheiro }))
   if (livro?.ficha) {
     try {
       await ligarAoLivro(livro.ficha.numero, fonte, { n: 1 + (fonte.ficheiros_extra?.length || 0), formato: formatoNotacao })
     } catch (e) {
-      log.aviso(`Ligação ao livro ${livro.ficha.numero}: ${e.message}`)
+      log.aviso(m('Ligação ao livro {numero}: {erro}', { numero: livro.ficha.numero, erro: traduzivel(e) }))
     }
   }
   if (info.precisaOcr) cicloOcr()
+}
+
+// Ficheiro do Finale: ficha pela ficha interna do .musx e pelo nome (ver finale.js); completa com a etiqueta
+// ETIQUETA_FINALE, mesmo sem data, se o título disser alguma coisa; parte cava de uma peça que já tem ficha entra nela.
+async function processarFinale({ caminho, hash, nomeOriginal, existente, estadoAntes, defs, raiz, ext }) {
+  const nomeReal = existente ? melhorNome([existente.ficheiro_original, ...nomesAlternativos(existente)], catalogoDe) || nomeOriginal : nomeOriginal
+  const musx = /\.musx$/i.test(caminho) ? await metadadosMusx(caminho) : {}
+  const r = fichaFinale({ nome: nomeReal, musx, conhecidos: await autoresConhecidos(), eDono: eDoDono, pessoaDono: pessoaDoDono(defs) })
+  log.info(m('A ler (Finale): {ficheiro}', { ficheiro: nomeOriginal }))
+  // Parte cava (ou outra versão igual) de uma peça que já tem ficha do Finale: passa a ficheiro dessa ficha
+  if (!existente && r.completa) {
+    const irma = await fichaIrma(r.campos, ETIQUETA_FINALE)
+    if (irma) return juntarComoParte({ irma, caminho, nomeOriginal, hash, ext, raiz, rotulo: r.parte || path.basename(nomeOriginal, ext).slice(0, 60), parte: r.parte, formato: 'Finale' })
+  }
+  await gravarFichaPropria({ existente, estadoAntes, caminho, nomeOriginal, nomeReal, hash, ext, defs, raiz, r, etiqueta: ETIQUETA_FINALE, tipoNome: 'Partitura', registo: r.completa ? m('Organizado (Finale, {titulo})', { titulo: r.origem.titulo }) : m('Por rever (Finale, nome pouco informativo)') })
+}
+
+const pessoaDoDono = (defs) => {
+  const primeiro = String(defs.nome_dono || '').split(';')[0].trim()
+  return primeiro ? pessoa(primeiro, 'editor') : null
+}
+
+// Ficha da mesma peça (mesmo título, compositor, versão e tonalidade) com esta etiqueta: as partes cavas juntam-se nela
+async function fichaIrma(campos, etiqueta) {
+  const t = campos.titulo
+  if (!t) return null
+  const candidatas = await pb.collection('fontes').getFullList({ filter: pb.filter("titulo = {:t} && tags ~ {:e} && estado != 'processando'", { t, e: etiqueta }) })
+  const chaveDe = (a) => F.semAcentos(a?.apelido || a?.literal || '').toLowerCase()
+  const comp = (campos.autores || []).find((a) => a.papel !== 'editor')
+  const md = campos.metadados || {}
+  return candidatas.find((f) => chaveDe((f.autores || []).find((a) => a.papel !== 'editor')) === chaveDe(comp) && (f.metadados?.edicao || '') === (md.edicao || '') && (f.metadados?.tonalidade || '') === (md.tonalidade || '')) || null
+}
+
+// Mais um ficheiro (parte cava, outra versão, a impressão em PDF) de uma ficha que já existe
+async function juntarComoParte({ irma, caminho, nomeOriginal, hash, ext, raiz, rotulo, parte, formato }) {
+  const destinoDir = path.dirname(path.join(PASTAS.biblioteca, irma.ficheiro))
+  const movido = await F.mover(caminho, destinoDir, nomeOriginal)
+  const extra = [...(irma.ficheiros_extra || []), { ficheiro: relativo(movido), rotulo, hash, original: nomeOriginal }]
+  const mdIrma = { ...(irma.metadados || {}) }
+  if (formato) mdIrma.formato = `${formato}: ${1 + extra.length} ficheiros`
+  // (instrumentação «a 4; partes: Cantus, Altus»: acrescenta-se a parte nova)
+  if (parte && parte !== 'partitura') {
+    const inst = String(irma.metadados?.instrumentacao || '')
+    const partes = [...new Set([...((/partes:\s*(.*)$/.exec(inst) || [])[1] || '').split(/,\s*/), parte].filter((p) => p && p !== 'partitura'))]
+    mdIrma.instrumentacao = [inst.replace(/;?\s*partes:.*$/, ''), `partes: ${partes.join(', ')}`].filter(Boolean).join('; ')
+  }
+  await pb.collection('fontes').update(irma.id, { ficheiros_extra: extra, metadados: mdIrma })
+  const final = await reorganizar(irma.id)
+  await F.limparPastasVazias(path.dirname(caminho), raiz)
+  log.info(parte ? m('Mais um ficheiro de «{titulo}» ({numero}): {ficheiro} (parte: {parte})', { titulo: final.titulo, numero: numeroFicha(final.numero), ficheiro: nomeOriginal, parte }) : m('Mais um ficheiro de «{titulo}» ({numero}): {ficheiro}', { titulo: final.titulo, numero: numeroFicha(final.numero), ficheiro: nomeOriginal }))
+}
+
+// Ficha feita por uma regra própria (Finale, transcrição em PDF, BGA): r = { campos: { titulo, autores, data, editora,
+// local, tipoNome, metadados }, completa, motivo, notas }. Reanálise de uma ficha já completa: o que lá está — talvez
+// corrigido à mão — fica; só se preenche o que falta.
+async function gravarFichaPropria({ existente, estadoAntes, caminho, nomeOriginal, nomeReal, hash, ext, defs, raiz, r, etiqueta, tipoNome, registo, paginas = 0, ocr = 'nao_aplicavel' }) {
+  // (outra cópia de uma ficha desta regra com o mesmo título, compositor e data: páginas iguais → _duplicados, como no resto
+  //  da biblioteca; diferentes → ficha própria, com nota)
+  if (!existente && r.campos.titulo) {
+    const chaveDe = (a) => F.semAcentos(a?.apelido || a?.literal || '').toLowerCase()
+    const comp = (r.campos.autores || []).find((a) => a.papel !== 'editor')
+    const iguais = (await pb.collection('fontes').getFullList({ filter: pb.filter("titulo = {:t} && tags ~ {:e} && ficheiro != ''", { t: r.campos.titulo, e: etiqueta }) })).filter((f) => chaveDe((f.autores || []).find((a) => a.papel !== 'editor')) === chaveDe(comp) && String(f.data || '') === String(r.campos.data || ''))
+    for (const g of iguais) {
+      const cmp = await compararFicheiros({ abs: caminho }, { abs: path.join(PASTAS.biblioteca, g.ficheiro) }).catch(() => ({ resultado: 'sem_comparacao' }))
+      if (cmp.resultado === 'igual') {
+        const destino = await F.mover(caminho, path.join(PASTAS.biblioteca, DUPLICADOS), nomeOriginal)
+        log.aviso(m('Outra cópia de «{titulo}» ({numero}): movida para {destino} (páginas iguais)', { titulo: g.titulo, numero: numeroFicha(g.numero), destino: relativo(destino) }))
+        registarOrigem(destino, { motivo: 'mesma_obra', numero: g.numero, titulo: g.titulo, paginas_iguais: true })
+        await F.limparPastasVazias(path.dirname(caminho), raiz)
+        return null
+      }
+      r = { ...r, notas: [...(r.notas || []), `Há outra ficha com a mesma obra (${numeroFicha(g.numero)}), com páginas ${cmp.resultado === 'parecido' ? 'muito parecidas' : 'diferentes'}: confirmar se é outra cópia ou outra versão.`] }
+    }
+  }
+  const tipo = await tipoPorNome(r.campos.tipoNome || tipoNome)
+  let fonte = existente || (await pb.collection('fontes').create({ titulo: r.campos.titulo || nomeReal, tipo: tipo?.id, estado: 'processando', ficheiro_original: nomeOriginal, hash, ocr_estado: 'nao_aplicavel' }))
+  const manter = existente && estadoAntes === 'completo'
+  const c = r.campos
+  const md = manter ? { ...c.metadados, ...(existente.metadados || {}) } : { ...(existente?.metadados || {}), ...c.metadados }
+  const notas = [md.nota_revisao, r.motivo, ...(r.notas || [])].filter(Boolean)
+  if (notas.length) md.nota_revisao = [...new Set(notas)].join(' ')
+  delete md[CHAVE_ESTADO_ANTES]
+  const valor = (k) => (manter && existente[k] ? existente[k] : c[k] || existente?.[k] || '')
+  const dados = {
+    tipo: manter ? existente.tipo || tipo?.id : tipo?.id,
+    titulo: manter ? existente.titulo || c.titulo : c.titulo || existente?.titulo || nomeReal,
+    autores: manter && existente.autores?.length ? existente.autores : c.autores?.length ? c.autores : existente?.autores || [],
+    data: valor('data'),
+    editora: valor('editora'),
+    local: valor('local'),
+    metadados: md,
+    tags: [...new Set([...(fonte.tags || []), etiqueta])],
+    estado: manter || r.completa ? 'completo' : 'a_rever',
+    origem: manter ? existente.origem : 'ficheiro',
+    ocr_estado: existente?.ocr_estado === 'feito' ? 'feito' : ocr,
+    ...(paginas ? { paginas } : {}),
+    ...(manter || r.completa ? { candidatos: [] } : {}),
+  }
+  fonte = await pb.collection('fontes').update(fonte.id, dados, { expand: 'tipo' })
+  const nomeTipo = fonte.expand?.tipo?.nome
+  const subpasta = fonte.estado === 'completo' ? F.pastaDestino(defs.padrao_pastas, fonte, nomeTipo) : POR_REVER
+  const final = await F.mover(caminho, path.join(PASTAS.biblioteca, subpasta), nomePrincipal(defs, fonte, nomeTipo, ext))
+  const extras = await arrumarExtras(fonte, subpasta, defs, nomeTipo)
+  fonte = await pb.collection('fontes').update(fonte.id, { ficheiro: relativo(final), ...(extras ? { ficheiros_extra: extras } : {}) })
+  await F.limparPastasVazias(path.dirname(caminho), raiz)
+  log.info(m('{registo}: {ficheiro}', { registo, ficheiro: fonte.ficheiro }))
+  if (dados.ocr_estado === 'pendente') cicloOcr()
+  return fonte
+}
+
+// PDF impresso de um editor de partituras (Finale, Sibelius, LilyPond…): ficha pelo nome e pela 1.ª página (transcricao_pdf.js);
+// a impressão de um ficheiro do Finale que já tem ficha entra nessa ficha; parte cava de uma peça com ficha entra nela
+async function processarTranscricaoPdf({ caminho, hash, nomeOriginal, nomeReal, existente, estadoAntes, defs, raiz, ext, info }) {
+  const texto = await X.pdfTexto(caminho, 1, 1, true)
+  log.info(m('A ler (transcrição em PDF, {programa}): {ficheiro}', { programa: info.programaPdf, ficheiro: nomeOriginal }))
+  if (!existente) {
+    const k = chavesDoNome(nomeReal)
+    const fichasFinale = await pb.collection('fontes').getFullList({ filter: pb.filter("tags ~ {:e} && estado != 'processando'", { e: ETIQUETA_FINALE }), fields: 'id,numero,titulo,ficheiro,ficheiro_original,ficheiros_extra,metadados,estado' })
+    const casa = (chave) => chaveComSentido(chave) && fichasFinale.filter((f) => [f.ficheiro_original, ...(f.ficheiros_extra || []).map((x) => x.original)].filter(Boolean).some((n) => { const c = chavesDoNome(n); return c.completa === chave || c.base === chave }))
+    const alvos = casa(k.completa) || []
+    const lista = alvos.length ? alvos : casa(k.base) || []
+    if (lista.length === 1) return juntarComoParte({ irma: lista[0], caminho, nomeOriginal, hash, ext, raiz, rotulo: `PDF${k.parte ? ` ${k.parte}` : ''}` })
+  }
+  const r = fichaTranscricaoPdf({ nome: nomeReal, texto, programa: info.programaPdf, conhecidos: await autoresConhecidos(), eDono: eDoDono, pessoaDono: pessoaDoDono(defs), atual: existente || {} })
+  // (só uma parte cava entra na ficha da peça: dois «Largo» do mesmo compositor sem parte podem ser peças diferentes)
+  if (!existente && r.completa && r.parte && r.parte !== 'partitura') {
+    const irma = await fichaIrma(r.campos, ETIQUETA_TRANSCRICAO)
+    if (irma) return juntarComoParte({ irma, caminho, nomeOriginal, hash, ext, raiz, rotulo: r.parte || path.basename(nomeOriginal, ext).slice(0, 60), parte: r.parte })
+  }
+  await gravarFichaPropria({ existente, estadoAntes, caminho, nomeOriginal, nomeReal, hash, ext, defs, raiz, r, etiqueta: ETIQUETA_TRANSCRICAO, tipoNome: 'Partitura', paginas: info.paginas, registo: r.completa ? m('Organizado (transcrição em PDF)') : m('Por rever (transcrição em PDF)') })
+}
+
+// Volume ou extracto da Bach-Gesellschaft-Ausgabe (bga.js): Bach, BWV, volume e ano da BGA, Breitkopf & Härtel
+async function processarBga({ caminho, hash, nomeOriginal, nomeReal, existente, estadoAntes, defs, raiz, ext, info, rec }) {
+  log.info(m('A ler (BGA {banda}): {ficheiro}', { banda: rec.banda || '', ficheiro: nomeOriginal }))
+  const t = await tituloBga(rec, { tituloAtual: existente?.titulo || info.titulos[0] || '', nome: nomeReal, email: defs.email_contacto })
+  const r = { ...rec, campos: { ...rec.campos, titulo: t.titulo, metadados: { ...rec.campos.metadados, ...(t.obra?.url ? { imslp: t.obra.url } : {}) } } }
+  await gravarFichaPropria({ existente, estadoAntes, caminho, nomeOriginal, nomeReal, hash, ext, defs, raiz, r, etiqueta: ETIQUETA_BGA, tipoNome: 'Partitura', paginas: info.paginas, ocr: info.precisaOcr ? 'pendente' : 'nao_aplicavel', registo: r.completa ? m('Organizado (BGA, {colecao})', { colecao: r.campos.metadados.colecao || r.campos.titulo }) : m('Por rever (BGA)') })
 }
 
 // Mais um ficheiro de um lote (peça de uma coleção): passa a ficheiro adicional da ficha do lote,
@@ -1301,9 +1461,9 @@ async function juntarAoLote(lote, caminho, hash, nomeOriginal, raiz) {
   await pb.collection('fontes').update(lote.id, { titulo: campos.titulo || lote.titulo, metadados: campos.metadados, ficheiros_extra: extra })
   const final = await reorganizar(lote.id)
   await F.limparPastasVazias(path.dirname(caminho), raiz)
-  log.info(`Mais uma peça do lote «${final.titulo}» (${numeroFicha(final.numero)}): ${nomeOriginal} (${n} ficheiros)`)
+  log.info(m('Mais uma peça do lote «{titulo}» ({numero}): {ficheiro} ({n} ficheiros)', { titulo: final.titulo, numero: numeroFicha(final.numero), ficheiro: nomeOriginal, n }))
   const livro = livroDaFicha(final)
-  if (livro) await ligarAoLivro(livro, final, { n, formato }).catch((e) => log.aviso(`Ligação ao livro ${livro}: ${e.message}`))
+  if (livro) await ligarAoLivro(livro, final, { n, formato }).catch((e) => log.aviso(m('Ligação ao livro {numero}: {erro}', { numero: livro, erro: traduzivel(e) })))
 }
 const numeroFicha = (n) => '#' + String(n || '').padStart(4, '0')
 
@@ -1365,9 +1525,9 @@ export async function juntarFichas(destinoId, origemIds) {
   const destino = await pb.collection('fontes').getOne(destinoId)
   const origens = []
   for (const id of [...new Set(origemIds)].filter((id) => id && id !== destinoId)) origens.push(await pb.collection('fontes').getOne(id))
-  if (!origens.length) throw new Error('Escolha pelo menos uma outra ficha para juntar.')
+  if (!origens.length) throw erro('Escolha pelo menos uma outra ficha para juntar.')
   for (const f of [destino, ...origens]) {
-    if (f.estado === 'processando') throw new Error(`A ficha #${String(f.numero).padStart(4, '0')} está a ser processada. Tente daqui a pouco.`)
+    if (f.estado === 'processando') throw erro('A ficha #{numero} está a ser processada. Tente daqui a pouco.', { numero: String(f.numero).padStart(4, '0') })
   }
   const extra = [...(destino.ficheiros_extra || [])]
   const tags = new Set(destino.tags || [])
@@ -1402,7 +1562,7 @@ export async function juntarFichas(destinoId, origemIds) {
     }
     await pb.collection('fontes').delete(o.id)
   }
-  log.info(`${origens.length} fichas juntadas a «${destino.titulo}» (#${String(destino.numero).padStart(4, '0')}): ${origens.map((o) => '#' + String(o.numero).padStart(4, '0')).join(', ')}`)
+  log.info(m('{n} fichas juntadas a «{titulo}» (#{numero}): {fichas}', { n: origens.length, titulo: destino.titulo, numero: String(destino.numero).padStart(4, '0'), fichas: origens.map((o) => '#' + String(o.numero).padStart(4, '0')).join(', ') }))
   return reorganizar(destinoId)
 }
 
@@ -1412,7 +1572,7 @@ export async function separarFicheiro(id, indice) {
   const f = await pb.collection('fontes').getOne(id)
   const extra = [...(f.ficheiros_extra || [])]
   const x = extra[indice]
-  if (!x) throw new Error('Ficheiro não encontrado nesta ficha.')
+  if (!x) throw erro('Ficheiro não encontrado nesta ficha.')
   extra.splice(indice, 1)
   const nova = await pb.collection('fontes').create({
     titulo: x.rotulo || path.basename(x.ficheiro),
@@ -1425,7 +1585,7 @@ export async function separarFicheiro(id, indice) {
     origem: 'ficheiro',
   })
   await pb.collection('fontes').update(id, { ficheiros_extra: extra })
-  log.info(`Ficheiro separado de «${f.titulo}»: nova ficha #${String(nova.numero).padStart(4, '0')} (por rever)`)
+  log.info(m('Ficheiro separado de «{titulo}»: nova ficha #{numero} (por rever)', { titulo: f.titulo, numero: String(nova.numero).padStart(4, '0') }))
   return nova
 }
 
@@ -1437,7 +1597,7 @@ async function aproveitarNomeDoRepetido(existente, nome) {
   if (informacaoDoNome(nome, catalogoDe) <= informacaoDoNome(atual, catalogoDe)) return
   const nomes = [...new Set([...nomesAlternativos(existente), nome])].slice(-5)
   await pb.collection('fontes').update(existente.id, { metadados: { ...(existente.metadados || {}), nomes_alternativos: nomes.join(' | ') } })
-  log.info(`O repetido tem um nome mais informativo («${nome}»): guardado em «${existente.titulo}»`)
+  log.info(m('O repetido tem um nome mais informativo («{nome}»): guardado em «{titulo}»', { nome, titulo: existente.titulo }))
   if (existente.estado === 'a_rever') await reanalisar(existente.id, { prioritario: true })
 }
 
@@ -1445,9 +1605,9 @@ async function aproveitarNomeDoRepetido(existente, nome) {
 export async function reanalisar(id, { prioritario = false } = {}) {
   await garantirSessao()
   const f = await pb.collection('fontes').getOne(id)
-  if (!f.ficheiro) throw new Error('Esta fonte não tem ficheiro para reanalisar.')
+  if (!f.ficheiro) throw erro('Esta fonte não tem ficheiro para reanalisar.')
   const abs = path.join(PASTAS.biblioteca, f.ficheiro)
-  if (!fs.existsSync(abs)) throw new Error(`Ficheiro não encontrado: ${f.ficheiro}`)
+  if (!fs.existsSync(abs)) throw erro('Ficheiro não encontrado: {ficheiro}', { ficheiro: f.ficheiro })
   // (o estado anterior fica guardado: a regra «ficha completa de catálogo continua completa» precisa dele)
   const alteracoes = { estado: 'processando', candidatos: [], metadados: marcarReanalise(f.estado, f.metadados) }
   if (!f.hash) alteracoes.hash = await F.hashFicheiro(abs)
@@ -1464,10 +1624,10 @@ export async function reanalisarPorRever() {
     try {
       await reanalisar(f.id)
     } catch (e) {
-      log.aviso(`Reanálise: ${e.message}`)
+      log.aviso(m('Reanálise: {erro}', { erro: traduzivel(e) }))
     }
   }
-  log.info(`Reanálise: ${lista.length} fontes por rever em fila`)
+  log.info(m('Reanálise: {n} fontes por rever em fila', { n: lista.length }))
   return { fontes: lista.length }
 }
 
@@ -1485,11 +1645,11 @@ export async function relerBiblioteca() {
   }
   percorrer(PASTAS.biblioteca)
   lista.forEach((p) => filaEntrada.juntar(p, { confirmado: true }))
-  log.info(`Releitura da biblioteca: ${lista.length} ficheiros em fila`)
+  log.info(m('Releitura da biblioteca: {n} ficheiros em fila', { n: lista.length }))
   return { ficheiros: lista.length }
 }
 
-export const filaEntrada = criarFila('Entrada', processarFicheiro)
+export const filaEntrada = criarFila(m('Entrada'), processarFicheiro)
 
 // Ao arrancar: fontes que ficaram "A processar" porque o serviço parou a meio (a fila só existe
 // enquanto o serviço corre) voltam para a fila. As da watch folder são retomadas pela própria vigia.
@@ -1502,7 +1662,7 @@ export async function retomarInterrompidas() {
     if (fs.existsSync(abs)) filaEntrada.juntar(abs, { confirmado: true })
     else emFalta++
   }
-  if (lista.length) log.info(`Retomadas ${lista.length - emFalta} fontes que tinham ficado «A processar»${emFalta ? ` (${emFalta} sem ficheiro na biblioteca)` : ''}`)
+  if (lista.length) log.info(emFalta ? m('Retomadas {n} fontes que tinham ficado «A processar» ({falta} sem ficheiro na biblioteca)', { n: lista.length - emFalta, falta: emFalta }) : m('Retomadas {n} fontes que tinham ficado «A processar»', { n: lista.length - emFalta }))
 }
 
 // ---------------------------------------------------------------------------
@@ -1551,12 +1711,12 @@ export async function cicloOcr() {
       const categoria = abs ? F.categoriaPorExtensao(abs) : ''
       if (!abs || !fs.existsSync(abs) || !['pdf', 'imagem'].includes(categoria)) {
         await pb.collection('fontes').update(f.id, { ocr_estado: abs && fs.existsSync(abs) ? 'nao_aplicavel' : 'erro' })
-        if (!abs || !fs.existsSync(abs)) log.erro(`OCR: ficheiro em falta para «${f.titulo}»`)
+        if (!abs || !fs.existsSync(abs)) log.erro(m('OCR: ficheiro em falta para «{titulo}»', { titulo: f.titulo }))
         continue
       }
       await pb.collection('fontes').update(f.id, { ocr_estado: 'em_curso' })
       ocrAtual = { id: f.id, titulo: f.titulo, pagina: 0, total: f.paginas || 1 }
-      log.info(`OCR iniciado: «${f.titulo}»`)
+      log.info(m('OCR iniciado: «{titulo}»', { titulo: f.titulo }))
       try {
         let texto
         if (categoria === 'pdf') {
@@ -1582,12 +1742,12 @@ export async function cicloOcr() {
           }
         }
         await pb.collection('fontes').update(f.id, alteracoes)
-        log.info(`OCR concluído: «${f.titulo}» (${texto.length} caracteres)`)
+        log.info(m('OCR concluído: «{titulo}» ({n} caracteres)', { titulo: f.titulo, n: texto.length }))
       } catch (e) {
         // (mudou-se para poupança ou pausa a meio: o documento volta para a fila)
         if (e.message === INTERROMPIDO) {
           await pb.collection('fontes').update(f.id, { ocr_estado: 'pendente' })
-          log.info(`OCR interrompido (intensidade): «${f.titulo}» volta para a fila`)
+          log.info(m('OCR interrompido (intensidade): «{titulo}» volta para a fila', { titulo: f.titulo }))
           break
         }
         // (a ficha foi reanalisada a meio e o ficheiro mudou de sítio: não é erro, volta para a fila)
@@ -1596,11 +1756,11 @@ export async function cicloOcr() {
         if (!agora) continue
         if (agora.ficheiro !== f.ficheiro || agora.estado === 'processando') {
           await pb.collection('fontes').update(f.id, { ocr_estado: 'pendente' })
-          log.info(`OCR interrompido (a ficha foi reanalisada): «${f.titulo}» volta para a fila`)
+          log.info(m('OCR interrompido (a ficha foi reanalisada): «{titulo}» volta para a fila', { titulo: f.titulo }))
           continue
         }
         await pb.collection('fontes').update(f.id, { ocr_estado: 'erro' })
-        log.erro(`OCR falhou em «${f.titulo}»: ${e.message}`)
+        log.erro(m('OCR falhou em «{titulo}»: {erro}', { titulo: f.titulo, erro: traduzivel(e) }))
       } finally {
         ocrAtual = null
       }
@@ -1625,7 +1785,7 @@ export async function reorganizar(id, { estado } = {}) {
   if (f.ficheiro) {
     const defs = await definicoes()
     const abs = path.join(PASTAS.biblioteca, f.ficheiro)
-    if (!fs.existsSync(abs)) throw new Error(`Ficheiro não encontrado: ${f.ficheiro}`)
+    if (!fs.existsSync(abs)) throw erro('Ficheiro não encontrado: {ficheiro}', { ficheiro: f.ficheiro })
     const tipoNome = f.expand?.tipo?.nome
     const alvoEstado = estado || f.estado
     const subpasta = alvoEstado === 'completo' ? F.pastaDestino(defs.padrao_pastas, f, tipoNome) : POR_REVER
@@ -1633,7 +1793,7 @@ export async function reorganizar(id, { estado } = {}) {
     alteracoes.ficheiro = relativo(final)
     if (alteracoes.ficheiro !== f.ficheiro) {
       await F.limparPastasVazias(path.dirname(abs), PASTAS.biblioteca)
-      log.info(`Reorganizado: ${f.ficheiro} → ${alteracoes.ficheiro}`)
+      log.info(m('Reorganizado: {de} → {para}', { de: f.ficheiro, para: alteracoes.ficheiro }))
     }
     const extras = await arrumarExtras(f, subpasta, defs, tipoNome)
     if (extras) alteracoes.ficheiros_extra = extras
@@ -1650,7 +1810,7 @@ export async function aprofundar(id) {
   const artista = interprete ? interprete.literal || [interprete.nome, interprete.apelido].filter(Boolean).join(' ') : ''
   const r = await E.aprofundado({ titulo: f.titulo, autor: f.autor_principal, artista, doi: f.doi, isbn: f.isbn }, defs)
   await pb.collection('fontes').update(id, { candidatos: r.candidatos })
-  log.info(`Pesquisa aprofundada: «${f.titulo}» — ${r.candidatos.length} resultados`)
+  log.info(m('Pesquisa aprofundada: «{titulo}» — {n} resultados', { titulo: f.titulo, n: r.candidatos.length }))
   return r
 }
 

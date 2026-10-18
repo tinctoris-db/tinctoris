@@ -10,18 +10,19 @@ import { tratarDiscos, PASTA_DISCOS } from './referencias_discos.js'
 import { filaEntrada, cicloOcr, eFonte, porDeLado, retomarInterrompidas } from './processador.js'
 import { iniciarServidor } from './servidor.js'
 import { log } from './registo.js'
+import { m, traduzivel } from './mensagens.js'
 import { iniciarIntensidade } from './intensidade.js'
 
 // Nunca parar em silêncio: registar erros inesperados
-process.on('uncaughtException', (e) => log.erro(`Erro inesperado: ${e.stack || e.message}`))
-process.on('unhandledRejection', (e) => log.erro(`Erro inesperado: ${e?.stack || e}`))
+process.on('uncaughtException', (e) => log.erro(m('Erro inesperado: {erro}', { erro: e.stack || e.message })))
+process.on('unhandledRejection', (e) => log.erro(m('Erro inesperado: {erro}', { erro: e?.stack || e })))
 
 await fsp.mkdir(PASTAS.biblioteca, { recursive: true })
 await fsp.mkdir(PASTAS.watch, { recursive: true })
 // (fotografias de discos: cada imagem desta pasta é um disco; ver referencias_discos.js)
 await fsp.mkdir(PASTA_DISCOS, { recursive: true })
 
-log.info('A ligar à base de dados...')
+log.info(m('A ligar à base de dados...'))
 await esperarPocketBase()
 await definicoes() // (carrega o nome do dono da biblioteca)
 await iniciarIntensidade()
@@ -48,14 +49,14 @@ vigia.on('add', (p) => {
   // da pasta Discos: ficha sem ficheiro, ver referencias.js e referencias_discos.js)
   if (eFonte(p) && categoriaPorExtensao(p) === 'imagem') agendarImagem(p, (f) => filaEntrada.juntar(f), tratarReferencias, tratarDiscos)
   else if (eFonte(p)) filaEntrada.juntar(p)
-  else cadeiaLado = cadeiaLado.then(() => porDeLado(p)).catch((e) => log.erro(`Pôr de lado ${p}: ${e.message}`))
+  else cadeiaLado = cadeiaLado.then(() => porDeLado(p)).catch((e) => log.erro(m('Pôr de lado {caminho}: {erro}', { caminho: p, erro: traduzivel(e) })))
 })
-vigia.on('error', (e) => log.erro(`Watch folder: ${e.message}`))
+vigia.on('error', (e) => log.erro(m('Watch folder: {erro}', { erro: traduzivel(e) })))
 vigia.on('ready', () => {
-  log.info(`A vigiar ${PASTAS.watch}`)
+  log.info(m('A vigiar {pasta}', { pasta: PASTAS.watch }))
   // (o OCR só arranca depois: com a fila já cheia, as fichas «por rever» esperam pela sua vez)
   retomarInterrompidas()
-    .catch((e) => log.erro(`Retomar fontes «A processar»: ${e.message}`))
+    .catch((e) => log.erro(m('Retomar fontes «A processar»: {erro}', { erro: traduzivel(e) })))
     .finally(() => {
       cicloOcr()
       setInterval(cicloOcr, 60000)

@@ -18,6 +18,7 @@ import { cicloOcr, reorganizar } from './processador.js'
 import { palavrasUteis } from './palavras.js'
 import * as E from './fontes_externas/index.js'
 import { log } from './registo.js'
+import { m, erro, traduzivel } from './mensagens.js'
 
 const TIPO_POR_CSL = {
   'article-journal': 'Artigo',
@@ -364,20 +365,27 @@ async function copiarFicheiro(origem, fonte, tipoNome, defs) {
   return { ficheiro: path.relative(PASTAS.biblioteca, final).split(path.sep).join('/'), hash, abs: final }
 }
 
+// Um problema da importação: o texto português (erros) e a mensagem traduzível (erros_t), na mesma ordem
+function registarErro(estado, t) {
+  estado.erros.push(t.msg)
+  estado.erros_t.push(t)
+}
+
 export function importar(id, opcoes = {}) {
   const analise = analises.get(id)
-  if (!analise) throw new Error('A análise expirou. Escolha o ficheiro outra vez.')
-  if (importacaoAtual && !importacaoAtual.terminado) throw new Error('Já está uma importação a decorrer.')
+  if (!analise) throw erro('A análise expirou. Escolha o ficheiro outra vez.')
+  if (importacaoAtual && !importacaoAtual.terminado) throw erro('Já está uma importação a decorrer.')
   const entradas = analise.entradas.filter((e) => !(opcoes.ignorarDuplicados !== false && e.duplicadoDe))
   // Entradas que já existem na biblioteca (ex.: vindas da watch folder): completá-las com os dados do Mendeley
   // (uma vez por fonte: o .bib pode ter a mesma obra repetida várias vezes)
   const vistasBd = new Set()
   const existentes = analise.entradas.filter((e) => e.duplicadoDe && e.duplicadoDe !== 'ficheiro' && !vistasBd.has(e.duplicadoDe) && vistasBd.add(e.duplicadoDe))
-  importacaoAtual = { total: entradas.length + existentes.length, feitas: 0, criadas: 0, completadas: 0, enriquecidas: 0, notas: 0, ficheiros: 0, erros: [], terminado: false, ficheiroOrigem: analise.nomeFicheiro }
+  importacaoAtual = { total: entradas.length + existentes.length, feitas: 0, criadas: 0, completadas: 0, enriquecidas: 0, notas: 0, ficheiros: 0, erros: [], erros_t: [], terminado: false, ficheiroOrigem: analise.nomeFicheiro }
   entradas.existentes = existentes
-  log.info(`Importação iniciada: ${entradas.length} referências de ${analise.nomeFicheiro || 'ficheiro'}`)
+  log.info(m('Importação iniciada: {n} referências de {origem}', { n: entradas.length, origem: analise.nomeFicheiro || 'ficheiro' }))
   correrImportacao(entradas, opcoes).catch((e) => {
     importacaoAtual.erros.push(e.message)
+    importacaoAtual.erros_t.push(traduzivel(e))
     importacaoAtual.terminado = true
   })
   analises.delete(id)
@@ -411,7 +419,7 @@ async function correrImportacao(entradas, opcoes) {
           }
           estado.ficheiros++
         } catch (err) {
-          estado.erros.push(`Ficheiro de «${dados.titulo}»: ${err.message}`)
+          registarErro(estado, m('Ficheiro de «{titulo}»: {erro}', { titulo: dados.titulo, erro: traduzivel(err) }))
         }
       }
 
@@ -445,8 +453,8 @@ async function correrImportacao(entradas, opcoes) {
       estado.criadas++
     } catch (err) {
       const d = err?.response?.data
-      const detalhe = d && typeof d === 'object' && Object.keys(d).length ? Object.entries(d).map(([k, v]) => `${k}: ${v.message}`).join('; ') : err.message
-      estado.erros.push(`«${e.fonte.titulo}»: ${detalhe}`)
+      const detalhe = d && typeof d === 'object' && Object.keys(d).length ? Object.entries(d).map(([k, v]) => `${k}: ${v.message}`).join('; ') : traduzivel(err)
+      registarErro(estado, m('«{titulo}»: {detalhe}', { titulo: e.fonte.titulo, detalhe }))
     }
     estado.feitas++
   }
@@ -455,14 +463,14 @@ async function correrImportacao(entradas, opcoes) {
   for (const e of entradas.existentes || []) {
     try {
       const f = await pb.collection('fontes').getOne(e.duplicadoDe)
-      const m = e.fonte
+      const mend = e.fonte
       const substituir = f.estado === 'a_rever'
       const d = {}
-      for (const k of ['titulo', 'data', 'editora', 'local', 'doi', 'isbn', 'url']) if (m[k] && (substituir || !f[k])) d[k] = m[k]
-      if (m.autores.length && (substituir || !f.autores?.length)) d.autores = m.autores
-      if (m.palavras_chave?.length && !f.palavras_chave?.length) d.palavras_chave = m.palavras_chave
-      d.metadados = { ...m.metadados, ...(f.metadados || {}) }
-      if (substituir && m.tipo) d.tipo = m.tipo
+      for (const k of ['titulo', 'data', 'editora', 'local', 'doi', 'isbn', 'url']) if (mend[k] && (substituir || !f[k])) d[k] = mend[k]
+      if (mend.autores.length && (substituir || !f.autores?.length)) d.autores = mend.autores
+      if (mend.palavras_chave?.length && !f.palavras_chave?.length) d.palavras_chave = mend.palavras_chave
+      d.metadados = { ...mend.metadados, ...(f.metadados || {}) }
+      if (substituir && mend.tipo) d.tipo = mend.tipo
       const tags = [...new Set([...(f.tags || []), ...e.etiquetas, ...(opcoes.pastasComoEtiquetas !== false ? e.pastas : [])])]
       if (tags.length) d.tags = tags
       if (substituir && (d.autores || f.autores?.length) && (d.data || f.data)) (d.estado = 'completo'), (d.candidatos = [])
@@ -472,13 +480,21 @@ async function correrImportacao(entradas, opcoes) {
       if (f.ficheiro) await reorganizar(f.id) // renomear o ficheiro segundo os dados novos
       estado.enriquecidas++
     } catch (err) {
-      estado.erros.push(`«${e.fonte.titulo}» (existente): ${err.message}`)
+      registarErro(estado, m('«{titulo}» (existente): {erro}', { titulo: e.fonte.titulo, erro: traduzivel(err) }))
     }
     estado.feitas++
   }
 
   estado.terminado = true
-  log.info(`Importação concluída: ${estado.criadas} fontes novas (${estado.completadas} completadas online), ${estado.enriquecidas} existentes completadas, ${estado.notas} notas, ${estado.erros.length} erros`)
+  log.info(
+    m('Importação concluída: {criadas} fontes novas ({completadas} completadas online), {enriquecidas} existentes completadas, {notas} notas, {erros} erros', {
+      criadas: estado.criadas,
+      completadas: estado.completadas,
+      enriquecidas: estado.enriquecidas,
+      notas: estado.notas,
+      erros: estado.erros.length,
+    })
+  )
   if (precisaOcr) cicloOcr()
 }
 

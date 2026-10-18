@@ -13,6 +13,7 @@ import { pb, garantirSessao, fontesPorIds, copiaDeSeguranca } from './pb.js'
 import { pastaDoLixo } from './espaco_duplicados.js'
 import { pastasOriginais } from './juntar.js'
 import { log } from './registo.js'
+import { m, erro } from './mensagens.js'
 
 // (a interface manda as fichas em blocos: os blocos seguidos vão para a mesma pasta do Lixo)
 let lixoAtual = null
@@ -47,11 +48,11 @@ async function paraOLixo(relativo, lixo) {
 
 export async function apagarFontes({ ids, semCopia } = {}) {
   ids = Array.isArray(ids) ? [...new Set(ids.map(String))] : []
-  if (!ids.length) throw new Error('Nenhuma fonte seleccionada.')
-  if (ids.length > 200) throw new Error('No máximo 200 fontes de cada vez.')
+  if (!ids.length) throw erro('Nenhuma fonte seleccionada.')
+  if (ids.length > 200) throw erro('No máximo 200 fontes de cada vez.')
   await garantirSessao()
   const copia = semCopia ? null : await copiaDeSeguranca('antes-apagar-fontes')
-  if (copia) log.info(`Cópia de segurança criada: ${copia}`)
+  if (copia) log.info(m('Cópia de segurança criada: {copia}', { copia }))
   if (!lixoAtual || Date.now() - lixoUsadoEm > 10 * 60000) lixoAtual = pastaDoLixo('Fontes apagadas')
   lixoUsadoEm = Date.now()
   const lixo = lixoAtual
@@ -111,6 +112,13 @@ export async function apagarFontes({ ids, semCopia } = {}) {
     registo,
     `\n== ${d.toLocaleString('pt-PT')} · ${apagadas} apagadas, ${saltadas.length} saltadas, ${movidos} ficheiros/pastas para o Lixo (${lixo})${copia ? ` · cópia ${copia}` : ''}\n${linhas.join('\n')}\n`
   )
-  log.info(`${apagadas} fontes apagadas; ${movidos} ficheiros/pastas no Lixo do Mac em ${lixo}${saltadas.length ? `; ${saltadas.length} saltadas` : ''}`)
+  log.info(
+    m('{apagadas} fontes apagadas; {movidos} ficheiros/pastas no Lixo do Mac em {lixo}{resto}', {
+      apagadas,
+      movidos,
+      lixo,
+      resto: saltadas.length ? m('; {n} saltadas', { n: saltadas.length }) : '',
+    })
+  )
   return { apagadas, saltadas, movidos, lixo, copia, registo }
 }

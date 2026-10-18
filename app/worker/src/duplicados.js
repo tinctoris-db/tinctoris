@@ -21,6 +21,7 @@ import { PASTAS, DUPLICADOS, BIN } from './config.js'
 import { pb, garantirSessao } from './pb.js'
 import * as F from './ficheiros.js'
 import { log } from './registo.js'
+import { m, erro } from './mensagens.js'
 import { juntarOriginais } from './juntar.js'
 
 const CACHE = path.join(PASTAS.app, 'cache', 'impressoes-pdf.json') // (pelo conteúdo: serve à cópia de teste e à real)
@@ -382,13 +383,13 @@ const referencias = (s) => String(s || '').match(/#\d+/g) || []
 // Retira a ficha `retirarId` (repetida) a favor de `manterId`. Devolve { manter, retirada, guardado_em }
 export async function juntarDuplicado(manterId, retirarId) {
   await garantirSessao()
-  if (manterId === retirarId) throw new Error('As duas fichas são a mesma.')
+  if (manterId === retirarId) throw erro('As duas fichas são a mesma.')
   const manter = await pb.collection('fontes').getOne(manterId)
   const retirar = await pb.collection('fontes').getOne(retirarId)
   for (const f of [manter, retirar]) {
-    if (f.estado === 'processando') throw new Error(`A ficha ${numeroFmt(f.numero)} está a ser processada. Tente daqui a pouco.`)
+    if (f.estado === 'processando') throw erro('A ficha {numero} está a ser processada. Tente daqui a pouco.', { numero: numeroFmt(f.numero) })
   }
-  if (retirar.ficheiros_extra?.length) throw new Error(`A ficha ${numeroFmt(retirar.numero)} tem vários ficheiros: junte-a à mão ("Juntar outras fichas a esta…").`)
+  if (retirar.ficheiros_extra?.length) throw erro('A ficha {numero} tem vários ficheiros: junte-a à mão ("Juntar outras fichas a esta…").', { numero: numeroFmt(retirar.numero) })
 
   // 1. O que passa para a ficha que fica
   const md = { ...(manter.metadados || {}) }
@@ -453,7 +454,14 @@ export async function juntarDuplicado(manterId, retirarId) {
     if (destino) await F.mover(destino, path.dirname(abs), path.basename(abs)).catch(() => {})
     throw e
   }
-  log.info(`Duplicado ${numeroFmt(retirar.numero)} retirado a favor de ${numeroFmt(manter.numero)} «${manter.titulo}»${guardado ? `: ficheiro em ${guardado}` : ''}`)
+  log.info(
+    m('Duplicado {retirado} retirado a favor de {mantido} «{titulo}»{resto}', {
+      retirado: numeroFmt(retirar.numero),
+      mantido: numeroFmt(manter.numero),
+      titulo: manter.titulo,
+      resto: guardado ? m(': ficheiro em {guardado}', { guardado }) : '',
+    })
+  )
   await esquecerPares([retirar.id])
   return { manter: numeroFmt(manter.numero), retirada: numeroFmt(retirar.numero), titulo: retirar.titulo, guardado_em: guardado }
 }
@@ -520,7 +528,7 @@ export async function paraRever() {
 
 // decisao: "diferentes" (não voltam a aparecer) ou "manter" (fica `manter`, a outra é retirada)
 export async function decidir({ a, b, decisao, manter }) {
-  if (!a || !b) throw new Error('Par inválido.')
+  if (!a || !b) throw erro('Par inválido.')
   if (decisao === 'diferentes') {
     const r = lerRevisao()
     r.decididos[chavePar(a, b)] = { decisao, quando: new Date().toISOString() }
@@ -529,8 +537,8 @@ export async function decidir({ a, b, decisao, manter }) {
     return { ok: true }
   }
   if (decisao === 'manter') {
-    if (manter !== a && manter !== b) throw new Error('Escolha uma das duas fichas.')
+    if (manter !== a && manter !== b) throw erro('Escolha uma das duas fichas.')
     return juntarDuplicado(manter, manter === a ? b : a)
   }
-  throw new Error('Decisão desconhecida.')
+  throw erro('Decisão desconhecida.')
 }

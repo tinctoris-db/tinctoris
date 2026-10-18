@@ -14,8 +14,9 @@ export async function garantirSessao() {
   if (!pb.authStore.isValid) await entrar()
 }
 
-// Espera até o PocketBase estar a responder (útil no arranque).
-export async function esperarPocketBase(tentativas = 60) {
+// Espera até o PocketBase estar a responder (útil no arranque). Até 10 minutos: com a base de 1 GB
+// o arranque pode demorar vários minutos, e o serviço não deve desistir (aconteceu a 13/10).
+export async function esperarPocketBase(tentativas = 600) {
   for (let i = 0; i < tentativas; i++) {
     try {
       await pb.health.check()

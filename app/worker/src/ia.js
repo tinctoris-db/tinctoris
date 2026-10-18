@@ -7,6 +7,7 @@ import { BIN } from './config.js'
 import { correr } from './extracao.js'
 import { pessoa, eInstituicao } from './fontes_externas/util.js'
 import { log } from './registo.js'
+import { m, erro } from './mensagens.js'
 
 const TIPOS = ['Livro', 'Capítulo de livro', 'Artigo', 'Tese / dissertação', 'Partitura', 'Manuscrito', 'Edição crítica', 'Programa de concerto', 'Carta', 'Relatório', 'Legislação', 'Outro']
 const PAPEIS = ['autor', 'compositor', 'editor', 'tradutor', 'arranjador', 'intérprete']
@@ -84,7 +85,7 @@ async function pedir(url, modelo, imagem, maxTokens, pistas = '', instrucoes = '
       messages: [{ role: 'user', content: instrucoes ? `${instrucoes}${pistas ? `\n\nText read on the photo by OCR (may have small errors):\n${pistas}` : ''}` : pistas ? `${INSTRUCOES}\n\nHints (may be incomplete, wrong, or name the publisher instead of the author):\n${pistas}\nTrust what is printed on the page; use the hints only to fill what the page does not say (e.g. the composer of variations on another composer's theme).` : INSTRUCOES, images: [imagem] }],
     }),
   })
-  if (!r.ok) throw new Error(`IA local: HTTP ${r.status}`)
+  if (!r.ok) throw erro('IA local: HTTP {estado}', { estado: r.status })
   const bruto = String((await r.json()).message?.content || '')
   return JSON.parse(bruto.slice(bruto.indexOf('{'), bruto.lastIndexOf('}') + 1))
 }
@@ -102,7 +103,7 @@ export async function lerComIA(caminho, categoria, defs, { pagina = 1, pistas = 
     try {
       d = await pedir(url, modelo, imagem, 1800, pistas)
     } catch (_) {
-      throw new Error('IA local: resposta sem JSON válido')
+      throw erro('IA local: resposta sem JSON válido')
     }
   }
   const autores = (Array.isArray(d.autores) ? d.autores : [])
@@ -134,7 +135,7 @@ export async function lerComIA(caminho, categoria, defs, { pagina = 1, pistas = 
     conteudo: /^cole/i.test(String(d.conteudo || '')) ? 'colecao' : /^obra/i.test(String(d.conteudo || '')) ? 'obra' : /^pe[çc]a/i.test(String(d.conteudo || '')) ? 'peca' : '',
     palavras_chave: (Array.isArray(d.palavras_chave) ? d.palavras_chave : []).map(texto).filter((k) => k && k.length <= 60).slice(0, 8),
   }
-  log.info(`IA local leu a página ${pagina} em ${Math.round((Date.now() - inicio) / 1000)} s: «${res.titulo.slice(0, 80)}»`)
+  log.info(m('IA local leu a página {pagina} em {segundos} s: «{titulo}»', { pagina, segundos: Math.round((Date.now() - inicio) / 1000), titulo: res.titulo.slice(0, 80) }))
   return res
 }
 
@@ -158,7 +159,7 @@ export async function lerFichaTecnica(caminho, defs, lido = '') {
     d = await pedir(url, modelo, imagem, 700, String(lido || '').slice(0, 3000), INSTRUCOES_FICHA)
   } catch (e) {
     if (/HTTP/.test(e.message)) throw e
-    throw new Error('IA local: resposta sem JSON válido')
+    throw erro('IA local: resposta sem JSON válido')
   }
   const autores = (Array.isArray(d.autores) ? d.autores : [])
     .map((a) => {
@@ -206,7 +207,7 @@ export async function lerCapaDisco(caminho, defs, lido = '') {
     d = await pedir(url, modelo, imagem, 700, String(lido || '').slice(0, 3000), INSTRUCOES_DISCO)
   } catch (e) {
     if (/HTTP/.test(e.message)) throw e
-    throw new Error('IA local: resposta sem JSON válido')
+    throw erro('IA local: resposta sem JSON válido')
   }
   const nomes = (v) => (Array.isArray(v) ? v : []).map((a) => texto(typeof a === 'string' ? a : a?.nome)).filter((n) => n && n.length <= 80)
   const suporte = SUPORTES_DISCO.find((s) => s.toLowerCase() === texto(d.suporte).toLowerCase()) || (/vinyl|vinil|disco de vinil/i.test(texto(d.suporte)) ? 'LP' : /cassette/i.test(texto(d.suporte)) ? 'Cassete' : '')
