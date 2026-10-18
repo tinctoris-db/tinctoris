@@ -10,9 +10,10 @@
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { spawn, execFile } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { PASTAS } from './config.js'
+import { discosExternos } from './plataforma.js'
 import { foraDasProtegidas } from './exportar_leitura.js'
 import { comPrioridade } from './intensidade.js'
 import { log } from './registo.js'
@@ -60,24 +61,21 @@ async function exportadoEm(pasta) {
 }
 
 async function lerDiscos() {
-  const saida = await new Promise((ok) => execFile('/sbin/mount', [], { encoding: 'utf8' }, (e, o) => ok(e ? '' : o)))
   let dispositivoBiblioteca = null
   try {
     dispositivoBiblioteca = fs.statSync(PASTAS.raiz).dev
   } catch {}
   const out = []
-  for (const l of saida.split('\n')) {
-    const m = l.match(/^.+? on (\/Volumes\/.+) \(([^)]*)\)\s*$/)
-    if (!m) continue
-    const [, ponto, opcoes] = m
-    const o = opcoes.split(',').map((x) => x.trim().toLowerCase())
-    if (o.includes('nobrowse') || o[0] === 'autofs' || real(ponto) === '/') continue
+  // (no Mac, os discos em /Volumes que aparecem no Finder; em Windows, as letras de unidade)
+  for (const disco of await discosExternos()) {
+    const { ponto, sistema } = disco
+    if (real(ponto) === '/') continue
     try {
       // (o disco onde a biblioteca vive não serve de destino: a cópia seria no mesmo disco)
       if (fs.statSync(ponto).dev === dispositivoBiblioteca) continue
       const sf = await fsp.statfs(ponto)
       const destino = path.join(ponto, PASTA_NO_DISCO)
-      out.push({ nome: path.basename(ponto), ponto, destino, sistema: o[0], exfat: o[0] === 'exfat', livre: sf.bavail * sf.bsize, total: sf.blocks * sf.bsize, copia: await exportadoEm(destino) })
+      out.push({ nome: disco.nome || path.basename(ponto) || ponto, ponto, destino, sistema, exfat: sistema === 'exfat', livre: sf.bavail * sf.bsize, total: sf.blocks * sf.bsize, copia: await exportadoEm(destino) })
     } catch {}
   }
   return out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))

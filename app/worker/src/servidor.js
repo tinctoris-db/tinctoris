@@ -4,8 +4,8 @@ import fs from 'node:fs'
 import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
-import { spawn, execFileSync } from 'node:child_process'
 import { PORTA, PASTAS, segredo } from './config.js'
+import { MAC, versaoDoSistema, abrir } from './plataforma.js'
 import { pb, garantirSessao, fontesPorIds, copiaDeSeguranca } from './pb.js'
 import { listarEstilos, exportar, exportarNotas } from './exportacao.js'
 import { filaEntrada, reorganizar, aprofundar, aplicar, pedirOcr, relerBiblioteca, reanalisar, reanalisarPorRever } from './processador.js'
@@ -42,15 +42,13 @@ const FICHEIRO_SO_LOCAL = path.join(PASTAS.app, '.so_local')
 let sistemaCache = null
 function sistema() {
   if (!sistemaCache) {
-    let macos = ''
-    try {
-      macos = execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim()
-    } catch (_) {}
+    const so = versaoDoSistema()
+    const macos = MAC ? so.versao : ''
     let versao = ''
     try {
       versao = JSON.parse(fs.readFileSync(path.join(PASTAS.app, 'worker', 'package.json'), 'utf8')).version
     } catch (_) {}
-    sistemaCache = { versao, macos, arquitetura: os.arch() }
+    sistemaCache = { versao, macos, sistema: `${so.nome} ${so.versao}`.trim(), arquitetura: os.arch() }
   }
   return sistemaCache
 }
@@ -118,7 +116,7 @@ const ROTAS = {
     const pasta = pastasOriginais(f.metadados).find((p) => p === b.pasta) || pastasOriginais(f.metadados)[0]
     const abs = pasta && path.join(PASTAS.biblioteca, pasta)
     if (!abs || !fs.existsSync(abs)) throw erro('A pasta dos originais não foi encontrada.')
-    spawn('/usr/bin/open', [abs], { detached: true, stdio: 'ignore' }).unref()
+    abrir(abs)
     return { ok: true }
   },
   // Ecrã "Duplicados": pares de PDFs quase iguais por decidir (a lista é feita por ./biblioteca duplicados)

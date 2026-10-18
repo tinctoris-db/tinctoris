@@ -1,0 +1,57 @@
+# Estudo para a versão Windows (18/10/2026): corre os testes automáticos do serviço de fundo numa máquina
+# Windows do GitHub (os do Mac correm no Mac do Pedro). Não instala nada no computador do Pedro.
+name: Testes (Windows)
+
+on:
+  push:
+    branches: ['mac/windows-*']
+  workflow_dispatch:
+
+jobs:
+  testes:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: app/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: SQLite (o instalador do Windows põe-no com o winget)
+        run: choco install sqlite -y --no-progress
+      - name: Instalar as peças do serviço
+        run: npm ci --no-audit --no-fund
+      - name: Todos os ficheiros do serviço abrem sem erros
+        run: |
+          for f in src/*.js src/fontes_externas/*.js; do node --check "$f" || echo "FALHOU: $f"; done
+      - name: Testes automáticos
+        run: node --test testes/*.test.js
+      - name: Os scripts de instalação do Windows não têm erros de sintaxe
+        shell: powershell
+        working-directory: .
+        run: |
+          $erros = $false
+          foreach ($f in @('instalar-tinctoris.ps1', 'app\instalar.ps1')) {
+            $e = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$e) | Out-Null
+            if ($e) { $erros = $true; $e | ForEach-Object { Write-Host "$f : $($_.Extent.StartLineNumber): $($_.Message)" } } else { Write-Host "$f : sem erros" }
+          }
+          if ($erros) { exit 1 }
+      - name: O lançador abre sem erros
+        run: node --check ../iniciar.mjs
+      - name: A linha irm-iex funciona com o instalador (texto como o irm o entrega)
+        shell: powershell
+        working-directory: .
+        run: |
+          $bytes = [IO.File]::ReadAllBytes((Resolve-Path 'instalar-tinctoris.ps1'))
+          $texto = [Text.Encoding]::UTF8.GetString($bytes)
+          Write-Host ('Primeiro caracter: U+{0:X4}' -f [int]$texto[0])
+          try { [ScriptBlock]::Create($texto) | Out-Null; Write-Host 'iex: OK, sem erros' } catch { Write-Host ('iex: ERRO - ' + $_.Exception.Message); exit 1 }
+          $semBom = $texto.TrimStart([char]0xFEFF)
+          try { [ScriptBlock]::Create($semBom) | Out-Null; Write-Host 'iex sem BOM: OK' } catch { Write-Host ('iex sem BOM: ERRO - ' + $_.Exception.Message) }

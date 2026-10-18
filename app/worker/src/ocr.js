@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { BIN, PASTAS } from './config.js'
 import { correr } from './extracao.js'
+import { converter } from './imagens.js'
 
 async function ocrImagemFicheiro(img, linguas) {
   const out = await correr(BIN.tesseract, [img, 'stdout', '--tessdata-dir', PASTAS.tessdata, '-l', linguas || 'por+eng'], { timeout: 300000 })
@@ -11,13 +12,13 @@ async function ocrImagemFicheiro(img, linguas) {
 }
 
 export async function ocrImagem(p, linguas) {
-  // Formatos que o Tesseract não lê diretamente são convertidos pelo macOS (sips).
+  // Formatos que o Tesseract não lê diretamente são convertidos para PNG (imagens.js).
   const ext = path.extname(p).toLowerCase()
   if (['.heic', '.webp', '.gif'].includes(ext)) {
     const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'ocr-'))
     try {
       const png = path.join(tmp, 'img.png')
-      await correr('/usr/bin/sips', ['-s', 'format', 'png', p, '--out', png])
+      await converter(p, png, { formato: 'png' })
       return await ocrImagemFicheiro(png, linguas)
     } finally {
       await fsp.rm(tmp, { recursive: true, force: true })

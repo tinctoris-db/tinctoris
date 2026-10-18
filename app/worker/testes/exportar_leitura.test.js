@@ -9,6 +9,7 @@ import vm from 'node:vm'
 import { execFileSync } from 'node:child_process'
 import fsp from 'node:fs/promises'
 import { planear, aplicar, foraDasProtegidas, nomeReservado, tomarBloqueio } from '../src/exportar_leitura.js'
+import { BIN } from '../src/config.js'
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exportar-leitura-'))
 const base = path.join(tmp, 'data.db')
@@ -65,7 +66,7 @@ function montar() {
     `INSERT INTO textos VALUES ('t2', 'bbb', '[p. 1] canção');`,
     `INSERT INTO textos VALUES ('t3', 'ccc', '');`,
   ].join('\n')
-  execFileSync('/usr/bin/sqlite3', [base], { input: sql })
+  execFileSync(BIN.sqlite3, [base], { input: sql })
   const escrever = (rel, conteudo) => {
     fs.mkdirSync(path.dirname(path.join(origem, rel)), { recursive: true })
     fs.writeFileSync(path.join(origem, rel), conteudo)
@@ -199,7 +200,7 @@ test('ficheiro mudado na origem volta a copiar-se', async () => {
 // A mesma base sem a ficha #150 (como se tivesse sido apagada na biblioteca)
 const baseSem150 = path.join(tmp, 'sem150.db')
 fs.copyFileSync(base, baseSem150)
-execFileSync('/usr/bin/sqlite3', [baseSem150, "DELETE FROM fontes WHERE id = 'bbb'; DELETE FROM notas_leitura WHERE fonte = 'bbb'; DELETE FROM textos WHERE fonte = 'bbb';"])
+execFileSync(BIN.sqlite3, [baseSem150, "DELETE FROM fontes WHERE id = 'bbb'; DELETE FROM notas_leitura WHERE fonte = 'bbb'; DELETE FROM textos WHERE fonte = 'bbb';"])
 
 test('ficha que sai da exportação: o ficheiro e o bloco de texto são apagados no destino', async () => {
   fs.writeFileSync(path.join(destino, 'biblioteca', 'Livro', '.DS_Store'), 'lixo')
@@ -296,9 +297,9 @@ function outra(nome, n, mais = []) {
     sql.push(`INSERT INTO fontes (id, numero, titulo, autores, estado, palavras_chave, metadados, ficheiro, ficheiros_extra) VALUES ('id${i}', ${i}, 'T${i}', '[]', 'completo', '[]', '{}', 'P/f${i}.pdf', '[]');`)
     fs.writeFileSync(path.join(o.origem, 'P', `f${i}.pdf`), 'x'.repeat(i))
   }
-  execFileSync('/usr/bin/sqlite3', [o.base], { input: [...sql, ...mais].join('\n') })
+  execFileSync(BIN.sqlite3, [o.base], { input: [...sql, ...mais].join('\n') })
   o.op = (m = {}) => ({ destino: o.destino, base: o.base, origem: o.origem, pagina, fontesInter: inter, ...m })
-  o.sql = (q) => execFileSync('/usr/bin/sqlite3', [o.base, q])
+  o.sql = (q) => execFileSync(BIN.sqlite3, [o.base, q])
   o.noDisco = () => fs.readdirSync(path.join(o.destino, 'biblioteca', 'P')).sort()
   return o
 }
@@ -390,7 +391,7 @@ test('apagar muito do disco, biblioteca vazia ou muitos ficheiros em falta: só 
   // 25 das 30 fichas desaparecem da base
   const menos = path.join(o.dir, 'menos.db')
   fs.copyFileSync(o.base, menos)
-  execFileSync('/usr/bin/sqlite3', [menos, 'DELETE FROM fontes WHERE numero > 5;'])
+  execFileSync(BIN.sqlite3, [menos, 'DELETE FROM fontes WHERE numero > 5;'])
   const plano = await planear(o.op({ base: menos }))
   assert.equal(plano.contagens.nApagar, 25)
   assert.equal(plano.precisaConfirmacaoForte, true)
@@ -410,7 +411,7 @@ test('apagar muito do disco, biblioteca vazia ou muitos ficheiros em falta: só 
   await aplicar(await planear(o.op()), { registos })
   const poucos = path.join(o.dir, 'poucos.db')
   fs.copyFileSync(o.base, poucos)
-  execFileSync('/usr/bin/sqlite3', [poucos, 'DELETE FROM fontes WHERE numero > 28;'])
+  execFileSync(BIN.sqlite3, [poucos, 'DELETE FROM fontes WHERE numero > 28;'])
   assert.equal((await planear(o.op({ base: poucos }))).precisaConfirmacaoForte, false)
   // biblioteca vazia (disco mal ligado): todas as fichas sem ficheiro → dois motivos
   const vazia = path.join(o.dir, 'vazia')

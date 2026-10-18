@@ -10,13 +10,13 @@ import os from 'node:os'
 import path from 'node:path'
 import { PDFDocument } from 'pdf-lib'
 import { PASTAS, ORIGINAIS } from './config.js'
-import { correr } from './extracao.js'
 import * as F from './ficheiros.js'
 import { log } from './registo.js'
 import { m, traduzivel } from './mensagens.js'
 import { esperarVez } from './intensidade.js'
 import { separarReferencias } from './referencias.js'
 import { pastaDoDisco } from './referencias_discos.js'
+import { converter, dimensoes } from './imagens.js'
 
 // Nome base sem o número final: "matteo 3" → "matteo"; "matteo 3r" → "matteo"; "001" → "" (só números)
 export function nomeBase(ficheiro) {
@@ -64,12 +64,8 @@ export function agrupar(ficheiros, { pastaInteira = false, nomePasta = '' } = {}
 const LADO_MAXIMO = 1600
 export async function paraVisualizacao(f, tmp, i) {
   const destino = path.join(tmp, `${String(i).padStart(5, '0')}.jpg`)
-  const props = await correr('/usr/bin/sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', f], { timeout: 60000 })
-  const w = Number((/pixelWidth:\s*(\d+)/.exec(props) || [])[1] || 0)
-  const h = Number((/pixelHeight:\s*(\d+)/.exec(props) || [])[1] || 0)
-  const args = ['-s', 'format', 'jpeg', '-s', 'formatOptions', '60']
-  if (Math.max(w, h) > LADO_MAXIMO) args.push('-Z', String(LADO_MAXIMO))
-  await correr('/usr/bin/sips', [...args, f, '--out', destino], { timeout: 120000 })
+  const { w, h } = await dimensoes(f)
+  await converter(f, destino, { formato: 'jpeg', qualidade: 60, ladoMaior: Math.max(w, h) > LADO_MAXIMO ? LADO_MAXIMO : 0 })
   return fsp.readFile(destino)
 }
 

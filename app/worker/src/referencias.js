@@ -25,6 +25,8 @@ import { nomeBase } from './juntar.js'
 import { log } from './registo.js'
 import { m, traduzivel } from './mensagens.js'
 import { esperarVez } from './intensidade.js'
+import { MAC } from './plataforma.js'
+import { lerImagem } from './ler_imagem.js'
 
 export const ETIQUETA = 'Em papel'
 
@@ -34,9 +36,11 @@ export const ETIQUETA = 'Em papel'
 const FONTE_LEITOR = path.join(PASTAS.app, 'worker', 'ferramentas', 'ler_imagem.swift')
 const LEITOR = path.join(PASTAS.app, 'cache', 'ler-imagem')
 let leitorPronto = null
-// O leitor da Apple é compilado uma vez (Command Line Tools, que o Homebrew já instala); sem ele, fica o Tesseract
+// O leitor da Apple é compilado uma vez (Command Line Tools, que o Homebrew já instala); sem ele (e em Windows), fica
+// o leitor de reserva, ler_imagem.js (zxing + Tesseract), que lê pior o texto das capas (comparação de 18/10/2026)
 function leitor() {
   leitorPronto ||= (async () => {
+    if (!MAC) return ''
     try {
       if (!fs.existsSync(LEITOR) || fs.statSync(LEITOR).mtimeMs < fs.statSync(FONTE_LEITOR).mtimeMs) {
         await fsp.mkdir(path.dirname(LEITOR), { recursive: true })
@@ -45,7 +49,7 @@ function leitor() {
       }
       return LEITOR
     } catch (e) {
-      log.aviso(m('Leitor de códigos de barras indisponível ({erro}): as fotografias de ISBN são lidas só com o Tesseract', { erro: String(e.message).split('\n')[0].slice(0, 200) }))
+      log.aviso(m('Leitor de códigos de barras da Apple indisponível ({erro}): as fotografias são lidas com o leitor de reserva (zxing + Tesseract)', { erro: String(e.message).split('\n')[0].slice(0, 200) }))
       return ''
     }
   })()
@@ -102,8 +106,8 @@ export async function lerFotografias(ficheiros) {
   }
   for (const f of ficheiros.filter((x) => !out.has(x))) {
     try {
-      const t = await correr(BIN.tesseract, [f, 'stdout', '--tessdata-dir', PASTAS.tessdata, '-l', 'por+eng'], { timeout: 120000 })
-      out.set(f, resumo(f, [], t.split('\n').map((s) => s.trim()).filter(Boolean).map((texto) => ({ texto }))))
+      const j = await lerImagem(f)
+      out.set(f, resumo(f, j.codigos, j.linhas))
     } catch (_) {
       out.set(f, resumo(f, [], []))
     }

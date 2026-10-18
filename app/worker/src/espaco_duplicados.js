@@ -22,10 +22,12 @@ import os from 'node:os'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { PASTAS, DUPLICADOS, ORIGINAIS, BIN } from './config.js'
+import { lixoDoSistema, abrir as abrirNoSistema } from './plataforma.js'
 import { pb, garantirSessao, definicoes } from './pb.js'
 import { log } from './registo.js'
 import { m, erro, traduzivel } from './mensagens.js'
 import { compararFicheiros, maisParecidaPelaCapa, guardarImpressoes } from './duplicados.js'
+import { converter } from './imagens.js'
 
 const RAIZ_DUP = path.join(PASTAS.biblioteca, DUPLICADOS)
 const RESULTADO = path.join(PASTAS.dados, 'verificacao-duplicados.json')
@@ -111,7 +113,7 @@ async function imagemPagina(abs, p = 1) {
     const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'pagina-'))
     try {
       const saida = path.join(tmp, 'p.jpg')
-      await executar('/usr/bin/sips', ['-s', 'format', 'jpeg', '-Z', '700', abs, '--out', saida])
+      await converter(abs, saida, { formato: 'jpeg', ladoMaior: 700, timeout: 60000 }).catch(() => {})
       return fs.existsSync(saida) ? 'data:image/jpeg;base64,' + (await fsp.readFile(saida)).toString('base64') : null
     } finally {
       await fsp.rm(tmp, { recursive: true, force: true })
@@ -419,11 +421,8 @@ export function porVer({ desde = 0, quantos = 50 } = {}) {
 
 // (nome: «Duplicados» ou «Fontes apagadas»; cada vez uma pasta nova com a data e a hora)
 export function pastaDoLixo(nome = 'Duplicados') {
-  const uid = os.userInfo().uid
-  const volume = (/^(\/Volumes\/[^/]+)/.exec(PASTAS.biblioteca) || [])[1]
-  // (no disco externo, o Lixo do Mac para esse disco é .Trashes/<uid>; mover para lá é instantâneo)
-  // (a cópia de teste usa LIXO_DIR, para não pôr nada no Lixo verdadeiro do Pedro)
-  const lixo = process.env.LIXO_DIR || (volume ? path.join(volume, '.Trashes', String(uid)) : path.join(os.homedir(), '.Trash'))
+  // (no Mac: o Lixo desse disco; a cópia de teste usa LIXO_DIR, para não pôr nada no Lixo verdadeiro do Pedro)
+  const lixo = lixoDoSistema(PASTAS.biblioteca)
   if (!fs.existsSync(lixo)) throw erro('Não encontrei o Lixo do Mac em {lixo}.', { lixo })
   const d = new Date()
   const carimbo = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`
@@ -518,6 +517,6 @@ export async function manter({ ficheiro }) {
 export async function abrir({ ficheiro, finder }) {
   const abs = path.join(PASTAS.biblioteca, String(ficheiro || ''))
   if (!dentroDe(abs, PASTAS.biblioteca) || !fs.existsSync(abs)) throw erro('Ficheiro não encontrado.')
-  spawn('open', finder ? ['-R', abs] : [abs], { detached: true, stdio: 'ignore' }).unref()
+  abrirNoSistema(abs, { naPasta: !!finder })
   return { ok: true }
 }

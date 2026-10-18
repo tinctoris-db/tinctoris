@@ -4,6 +4,7 @@ import { promisify } from 'node:util'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { BIN } from './config.js'
+import { MAC } from './plataforma.js'
 import { comPrioridade } from './intensidade.js'
 
 const exec = promisify(execFile)
@@ -160,13 +161,15 @@ export function isbn10(isbn) {
 }
 
 // Título provável a partir do nome do ficheiro ("Bach_-_Fuga_BWV_578.pdf" -> "Bach - Fuga BWV 578")
+// (o «pdf» que faz parte do nome não é título: "P-Arouca_livro_polifónico_pdf.pdf" -> "P-Arouca livro polifónico")
 export function tituloDoNome(ficheiro) {
-  return path
+  const t = path
     .basename(ficheiro, path.extname(ficheiro))
     .normalize('NFC')
     .replace(/[_]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+  return t.replace(/(?:[\s.-]+pdf)+$/i, '').trim() || t
 }
 
 // Descarta títulos de metadados PDF que não dizem nada.
@@ -209,9 +212,12 @@ export function tituloDoTexto(texto) {
 const binario = (t) => t.startsWith('ÐÏ\u0011à') || t.startsWith('ÐÏ') || (t.slice(0, 4000).match(/[\u0000-\u0008\u000e-\u001f�]/g) || []).length > 40
 export async function textoDocumento(p) {
   let texto = ''
-  try {
-    texto = await correr('/usr/bin/textutil', ['-convert', 'txt', '-stdout', p], { timeout: 120000 })
-  } catch (_) {}
+  // (o textutil só existe no Mac; em Windows os .doc vão pelo word-extractor e os outros ficam sem texto por agora)
+  if (MAC) {
+    try {
+      texto = await correr('/usr/bin/textutil', ['-convert', 'txt', '-stdout', p], { timeout: 120000 })
+    } catch (_) {}
+  }
   if (/\.(doc|dot)$/i.test(p) && (!texto.trim() || binario(texto))) {
     try {
       const { default: WordExtractor } = await import('word-extractor')

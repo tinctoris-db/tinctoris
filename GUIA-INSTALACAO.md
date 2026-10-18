@@ -5,7 +5,7 @@
 *English: [installation guide](INSTALL.md).*
 
 O TINCTORIS é uma base de dados de fontes para musicologia, investigação artística e ensino: manuscritos, impressos,
-partituras, gravações, instrumentos, iconografia. Cada pessoa instala-o no seu Mac e tem a sua própria biblioteca.
+partituras, gravações, instrumentos, iconografia. Cada pessoa instala-o no seu Mac (ou, em versão experimental, num PC com Windows) e tem a sua própria biblioteca.
 
 ## Antes de começar
 
@@ -56,6 +56,25 @@ Se algo falhar, o instalador abre o formulário de comentários já com a descri
 Por omissão, o TINCTORIS só abre no seu Mac. Para o abrir também no iPad ou noutro computador da mesma rede Wi-Fi:
 Definições → «A sua biblioteca» → desligar «Abrir só neste Mac», e voltar a abrir o TINCTORIS.
 
+## Windows (experimental)
+
+Desde a 0.12.0-beta, o TINCTORIS também funciona em **Windows 11** (ou Windows 10 actualizado), de 64 bits.
+1. Abra o **PowerShell** (tecla Windows, escreva «PowerShell», Enter).
+2. Cole esta linha (botão direito do rato) e carregue em Enter:
+
+   ```
+   irm https://raw.githubusercontent.com/tinctoris-db/tinctoris/main/instalar-tinctoris.ps1 | iex
+   ```
+3. O instalador mostra 7 passos e usa o **winget** (já vem com o Windows) para instalar Node.js, Poppler, Tesseract,
+   FFmpeg e SQLite: responda **Sim** quando o Windows pedir autorização. Demora cerca de 20 minutos.
+4. No fim aparece o ícone **TINCTORIS** no Ambiente de Trabalho. Duplo clique: abre-se uma janela preta (não a feche
+   enquanto usa o programa) e o navegador.
+
+O programa fica na pasta `TINCTORIS` da sua pasta de utilizador (a watch folder é `TINCTORIS\watch_folder`). Diferenças
+em relação ao Mac: o que no Mac vai para o Lixo vai para a pasta **«TINCTORIS - Lixo»** na raiz do disco; as fotografias
+HEIC do iPhone ainda não são lidas; a leitura de códigos de barras e de texto nas fotografias de capas é mais fraca; os
+ficheiros .pages ficam sem texto integral. A IA local precisa de 16 GB de memória (com menos, fica desligada).
+
 ## Exportar referências bibliográficas
 
 No ecrã **Fontes**, o botão **«Exportar bibliografia»** exporta as fontes seleccionadas (caixas à esquerda de cada
@@ -67,7 +86,7 @@ guarda-a em texto, RTF, HTML, BibTeX, RIS ou CSL-JSON (para Zotero, Mendeley ou 
 
 Esta é uma versão beta: os seus comentários decidem o que melhora. No fundo da barra lateral, **«Enviar comentário»**
 abre um formulário curto (não funciona / podia funcionar melhor / falta fazer / dúvida de utilização). A versão
-do programa e do macOS e os últimos erros técnicos vão preenchidos; nunca vão títulos, nomes de ficheiros nem fontes.
+do programa e do sistema e os últimos erros técnicos vão preenchidos; nunca vão títulos, nomes de ficheiros nem fontes.
 Nome e email são opcionais. Quem quiser pode aparecer nos **Créditos** (menu «Acerca»). Nessa página estão também a versão, como citar o
 TINCTORIS e as ligações para o manual e os guias.
 

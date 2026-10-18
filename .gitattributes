@@ -1,0 +1,6 @@
+# Todos os ficheiros de texto com fins de linha do Mac/Linux, também quando o Git os põe num Windows (é assim que
+# chegam no .zip da release); os ficheiros só de Windows com os do Windows
+* text=auto eol=lf
+# Ficheiros só de Windows: fins de linha do Windows (o cmd.exe e o PowerShell 5 precisam deles)
+*.bat text eol=crlf
+*.ps1 text eol=crlf

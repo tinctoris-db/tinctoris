@@ -9,11 +9,11 @@ import * as X from './extracao.js'
 import { ocrPdf, ocrImagem } from './ocr.js'
 import * as E from './fontes_externas/index.js'
 import { crossrefPorDoi } from './fontes_externas/bibliograficas.js'
-import { pessoa, titulosIguais, anosCompativeis, semelhanca, contido, tituloCompacto } from './fontes_externas/util.js'
+import { pessoa, titulosIguais, anosCompativeis, semelhanca, contido, tituloCompacto, semNomeLocal, separarImprenta } from './fontes_externas/util.js'
 import { siglaRism, siglasEquivalentes, pesquisarMusical, CATALOGOS_FONTES } from './fontes_externas/musicologicas.js'
 import { completarExemplar, reconhecerExemplar, IDENTIFICADORES } from './fontes_externas/bibliotecas_digitais.js'
 import { fontesConhecidas } from './fontes_externas/compositores.js'
-import { versaoDoAutor, pistasDoNome, formaProvavel, manuscritoPelaCota, exemplarDigitalizado, informacaoDoNome, melhorNome, restoDoNome, maiusculasDoNome } from './musica_antiga.js'
+import { versaoDoAutor, pistasDoNome, formaProvavel, manuscritoPelaCota, exemplarDigitalizado, informacaoDoNome, melhorNome, restoDoNome, maiusculasDoNome, tituloSiglaCota, notaSiglaDesconhecida } from './musica_antiga.js'
 import { chaveCota } from './fontes_externas/musicologicas.js'
 import { catalogoDe, obraPorCatalogo, aplicarObra, compositorDe, obraCompativel, obraPlausivel, catalogoConfirmado, catalogoPeloNome, numeroNoNome, eIntervalo, donoDoCatalogo } from './fontes_externas/obras.js'
 import { lerLayout, lerLayoutOcr, analisarCapa, analisarJstor, palavrasChaveDoTexto, doNomeFicheiro, eTextoMusical, limparMusica, tokenMusical, cifrado } from './capa.js'
@@ -148,6 +148,14 @@ export function protegerReanalise(antiga, dados, { novaDeCatalogo = false, recus
   const d = { ...dados, metadados: { ...(dados.metadados || {}) } }
   const mantidos = []
   if (!antiga) return { dados: d, mantidos, deCatalogo: false }
+  // («[s.n.]»/«[S.l.]» antigos contam como vazios; a imprenta inteira antiga — "À Lyon : par Michel du Bois, M.D.LVI" —
+  //  não volta quando a nova editora e o novo local são os mesmos, já separados)
+  antiga = { ...antiga, editora: semNomeLocal(antiga.editora), local: semNomeLocal(antiga.local) }
+  const imprenta = separarImprenta(antiga.editora)
+  if (imprenta && imprenta.editora && F.semAcentos(imprenta.editora).toLowerCase() === F.semAcentos(String(d.editora || '')).toLowerCase()) {
+    antiga.editora = d.editora
+    if (!antiga.local || antiga.local === imprenta.local) antiga.local = d.local || imprenta.local
+  }
   // (identificação antiga recusada — fonte fotografada «identificada» num catálogo de livros modernos: os dados dela
   // não voltam; só passam as ligações da própria biblioteca)
   if (recusada) {
@@ -157,7 +165,9 @@ export function protegerReanalise(antiga, dados, { novaDeCatalogo = false, recus
   const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b)
   // (título antigo mais completo, que começa pelo novo: «CONCERTO I. G-dur.» em vez de «CONCERTO I.»)
   const norm = (t) => F.semAcentos(String(t || '')).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
-  const maisCompleto = (velho, novo) => !tituloLixo(velho) && norm(novo) && norm(velho) !== norm(novo) && norm(velho).startsWith(`${norm(novo)} `)
+  // (o «pdf» no fim do título antigo vinha do nome do ficheiro — "…_pdf.pdf" —: não o torna mais completo)
+  const semPdf = (t) => norm(t).replace(/( pdf)+$/, '')
+  const maisCompleto = (velho, novo) => !tituloLixo(velho) && norm(novo) && semPdf(velho) !== norm(novo) && semPdf(velho).startsWith(`${norm(novo)} `)
   for (const k of CAMPOS_PROTEGIDOS) {
     // (o que as regras corrigiram de propósito não volta, a não ser que venha de um catálogo)
     if (vazio(antiga[k]) || igual(d[k], antiga[k]) || (semRepor.includes(k) && !deCatalogo)) continue
@@ -1013,8 +1023,7 @@ async function processarFicheiro(caminho) {
     }
     // Sigla no início do nome que o RISM não reconhece: manuscrito identificado pela sigla e cota do nome, por rever
     if (siglaDesconhecida && !doCatalogo) {
-      const restoSD = restoDoNome(nomeReal, siglaDesconhecida.texto, siglaDesconhecida.cota)
-      dados.titulo = `${siglaDesconhecida.texto}${siglaDesconhecida.cota ? ` ${siglaDesconhecida.cota}` : ''}${restoSD ? ` — ${restoSD}` : ''}`
+      dados.titulo = tituloSiglaCota(nomeReal, siglaDesconhecida.texto, siglaDesconhecida.cota)
       semRepor.push('titulo')
       dados.metadados = { ...dados.metadados, forma: 'Manuscrito', ...(siglaDesconhecida.cota && !dados.metadados.cota ? { cota: siglaDesconhecida.cota } : {}) }
       if (nomeTipoFinal !== 'Manuscrito' && !['Carta', 'Diário'].includes(nomeTipo)) {
@@ -1022,8 +1031,15 @@ async function processarFicheiro(caminho) {
         dados.tipo = (await tipoPorNome('Manuscrito'))?.id || dados.tipo
       }
       dados.natureza = 'primária'
-      notas.push(`Sigla «${siglaDesconhecida.texto}» não reconhecida no RISM${siglaDesconhecida.possiveis.length ? ` (pode ser: ${siglaDesconhecida.possiveis.join(', ')})` : ''}: tratada como manuscrito com a cota do nome do ficheiro.`)
+      notas.push(notaSiglaDesconhecida(siglaDesconhecida))
       if (dados.estado === 'completo') (dados.estado = 'a_rever'), (dados.candidatos = candidatos)
+    }
+    // Sigla do RISM no início do nome mas sem cota válida — «P-Arouca_livro_polifónico_pdf» —: o título que veio do nome
+    // do ficheiro fica no formato dos outros, «SIGLA — resto do nome» (só se ainda for o título do nome do ficheiro)
+    if (!doCatalogo && sigla && !cota && inicioDoNome.startsWith(String(sigla.variante || sigla.sigla).toLowerCase())) {
+      const normT = (t) => F.semAcentos(String(t || '')).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+      const doNome = [X.tituloDoNome(nomeReal), path.basename(nomeReal, path.extname(nomeReal)).replace(/_+/g, ' ')].map(normT)
+      if (doNome.includes(normT(dados.titulo))) dados.titulo = tituloSiglaCota(nomeReal, sigla.sigla, '')
     }
     // (variante da sigla no nome — "P-BRd" — lida como a sigla do RISM: fica dito na nota, sem pôr a ficha por rever)
     if (sigla?.variante) {
@@ -1128,6 +1144,9 @@ async function processarFicheiro(caminho) {
     }
   }
   if (info.local && !dados.local) dados.local = info.local
+  // («[s.n.]» e «[S.l.]» não são editora nem local, venham de onde vierem: catálogo, IA, metadados do PDF)
+  dados.editora = semNomeLocal(dados.editora)
+  dados.local = semNomeLocal(dados.local)
   // Trabalhos académicos (teses, artigos…): o compositor que aparece no título é o assunto, não o autor; «intérprete»
   // num texto é o autor; e a reanálise não troca o autor que a ficha tinha pelo compositor que a IA leu
   // (avisos: ficam na nota, mas não põem a ficha «por rever»)

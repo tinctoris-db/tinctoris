@@ -36,7 +36,47 @@ function tr(texto, vars) {
   if (texto === null || texto === undefined) return texto
   let s = String(texto)
   if (IDIOMA !== 'pt' && TRADUCOES[s]) s = TRADUCOES[s]
+  if (SISTEMA_WINDOWS) s = paraWindows(s)
   if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m))
+  return s
+}
+
+// Em Windows (versão Windows, fase 3 — 18/10/2026), as frases que falam do Mac passam a falar do computador: o Lixo é a
+// pasta «TINCTORIS - Lixo» (worker/src/plataforma.js), o Finder é o Explorador de Ficheiros, o Terminal é a janela do
+// TINCTORIS. O sistema vem do serviço (servico('sistema')) e fica guardado para a próxima vez.
+let SISTEMA_WINDOWS = lerPreferencia('windows', false)
+const PARA_WINDOWS = {
+  pt: [
+    [/para o Lixo do Mac/g, 'para a pasta «TINCTORIS - Lixo»'],
+    [/no Lixo do Mac/g, 'na pasta «TINCTORIS - Lixo»'],
+    [/No Lixo do Mac/g, 'Na pasta «TINCTORIS - Lixo»'],
+    [/o Lixo do Mac/g, 'a pasta «TINCTORIS - Lixo»'],
+    [/ no Lixo e podem ser recuperados até esvaziar o Lixo/g, ' dentro dela e podem ser recuperados até a esvaziar'],
+    [/Finder do Mac/g, 'Explorador de Ficheiros do computador'],
+    [/Finder/g, 'Explorador de Ficheiros'],
+    [/janela do Terminal/g, 'janela do TINCTORIS'],
+    [/neste Mac/g, 'neste computador'],
+    [/no Mac onde/g, 'no computador onde'],
+    [/do macOS/g, 'do Windows'],
+    [/O macOS/g, 'O Windows'],
+  ],
+  en: [
+    [/to the Mac’s Bin/g, 'to the “TINCTORIS - Lixo” folder'],
+    [/in the Mac’s Bin/g, 'in the “TINCTORIS - Lixo” folder'],
+    [/In the Mac’s Bin/g, 'In the “TINCTORIS - Lixo” folder'],
+    [/the Mac’s Bin/g, 'the “TINCTORIS - Lixo” folder'],
+    [/ in the Bin and can be recovered until you empty the Bin/g, ' inside it and can be recovered until you empty it'],
+    [/Finder of the Mac/g, 'File Explorer of the computer'],
+    [/Finder/g, 'File Explorer'],
+    [/Terminal window/g, 'TINCTORIS window'],
+    [/this Mac/g, 'this computer'],
+    [/on the Mac wh/g, 'on the computer wh'],
+    [/macOS versions/g, 'Windows versions'],
+    [/macOS may/g, 'Windows may'],
+  ],
+}
+function paraWindows(s) {
+  for (const [re, novo] of PARA_WINDOWS[IDIOMA === 'pt' ? 'pt' : 'en']) s = s.replace(re, novo)
   return s
 }
 
@@ -221,7 +261,22 @@ function trechoHtml(t) {
   return div
 }
 
+let sistemaPedido = false
 async function servico(acao, corpo) {
+  // (uma vez por sessão: saber se a biblioteca corre em Windows, para as frases do Mac — ver paraWindows)
+  if (!sistemaPedido && acao !== 'sistema') {
+    sistemaPedido = true
+    servico('sistema')
+      .then((r) => {
+        const w = /^Windows/.test(r?.sistema || '')
+        if (w === SISTEMA_WINDOWS) return
+        SISTEMA_WINDOWS = w
+        guardarPreferencia('windows', w)
+        // (primeira vez neste navegador: recarregar, para os textos já desenhados mudarem; não volta a acontecer)
+        location.reload()
+      })
+      .catch(() => (sistemaPedido = false))
+  }
   return pb.send('/api/bib/servico/' + acao, corpo ? { method: 'POST', body: corpo } : { method: 'GET' })
 }
 
@@ -361,7 +416,7 @@ async function ecraEntrada() {
 // ---------------------------------------------------------------------------
 // Estrutura da aplicação
 
-const VERSAO = '0.11.0-beta'
+const VERSAO = '0.12.0-beta'
 const REPOSITORIO = 'https://github.com/tinctoris-db/tinctoris'
 
 const VISTAS = {
@@ -2429,7 +2484,7 @@ async function informacaoTecnica() {
   const linhas = [`TINCTORIS ${VERSAO}`]
   try {
     const s = await servico('sistema')
-    linhas[0] += ` · macOS ${s.macos || '?'} (${s.arquitetura || '?'})`
+    linhas[0] += ` · ${s.sistema || `macOS ${s.macos || '?'}`} (${s.arquitetura || '?'})`
   } catch (_) {}
   linhas.push(`Ecrã: ${VISTAS[vistaAtual()]?.rotulo || vistaAtual()}`)
   try {

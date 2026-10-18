@@ -6,6 +6,7 @@
 // «417513 105223» no texto) e a capa de «O Alaúde na Península Ibérica» (Segréis de Lisboa, sem código).
 // Os catálogos e a IA são simulados (nada sai para a internet).
 import { test } from 'node:test'
+import path from 'node:path'
 import assert from 'node:assert/strict'
 import { isbnDoCodigo } from '../src/extracao.js'
 import { resumo, eanValido, eanDeDisco, classificarFotografias } from '../src/referencias.js'
@@ -76,9 +77,11 @@ test('Na raiz: discos saem para os discos, livros para os livros, o resto segue 
 })
 
 test('Pasta Discos: soltas, subpasta (um disco), fora dela', () => {
-  assert.deepEqual(pastaDoDisco('/w/Discos/IMG_1.jpg', '/w'), { pasta: '/w/Discos', raiz: '/w/Discos', solto: true, nome: '' })
-  assert.deepEqual(pastaDoDisco('/w/Discos/Segréis de Lisboa/capa.jpg', '/w'), { pasta: '/w/Discos/Segréis de Lisboa', raiz: '/w/Discos', solto: false, nome: 'Segréis de Lisboa' })
-  assert.equal(pastaDoDisco('/w/Discos/Alba/livrete/p1.jpg', '/w').pasta, '/w/Discos/Alba')
+  // (os caminhos devolvidos usam o separador do sistema: «\\» em Windows)
+  const j = (...p) => path.join(...p)
+  assert.deepEqual(pastaDoDisco('/w/Discos/IMG_1.jpg', '/w'), { pasta: j('/w', 'Discos'), raiz: j('/w', 'Discos'), solto: true, nome: '' })
+  assert.deepEqual(pastaDoDisco('/w/Discos/Segréis de Lisboa/capa.jpg', '/w'), { pasta: j('/w', 'Discos', 'Segréis de Lisboa'), raiz: j('/w', 'Discos'), solto: false, nome: 'Segréis de Lisboa' })
+  assert.equal(pastaDoDisco('/w/Discos/Alba/livrete/p1.jpg', '/w').pasta, j('/w', 'Discos', 'Alba'))
   assert.equal(pastaDoDisco('/w/discos/x.jpg', '/w').solto, true)
   assert.equal(pastaDoDisco('/w/x.jpg', '/w'), null)
   assert.equal(pastaDoDisco('/w/Livros/Discos/x.jpg', '/w'), null)

@@ -1,5 +1,11 @@
 # TINCTORIS — novidades de cada versão
 
+## 0.12.0-beta (18 de Outubro de 2026)
+
+- TINCTORIS também em Windows 11 (experimental): instalação com uma linha no PowerShell (winget), ícone no Ambiente de Trabalho e actualização automática a partir das versões publicadas.
+- Imagens convertidas com uma ferramenta que funciona nos dois sistemas: as páginas de visualização das fotografias ocupam metade do espaço.
+- Catálogos: «[s.n.]» e «[S.l.]» ficam vazios; a imprenta da Gallica é separada em local e editora; títulos com «pdf» vindo do nome do ficheiro deixam de passar.
+
 ## 0.11.0-beta (18 de Outubro de 2026)
 
 ### Acrescentar fontes

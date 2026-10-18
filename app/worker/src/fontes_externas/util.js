@@ -164,8 +164,39 @@ export function dataDePartes(partes) {
 
 export const primeiro = (v) => (Array.isArray(v) ? v[0] : v) || ''
 
+// «[s.n.]» (sine nomine) e «[S.l.]» (sine loco) dizem só que a fonte não traz editora nem local: ficam vazios
+// (Pedro, 2/10/2026: Agricola 1543 da Gallica ficava com a editora «[s.n.]»). Também "s.n.", "S.l. : s.n.", "[s.l.n.d.]",
+// "sine nomine", "sine loco", "sans nom", "sans lieu".
+const SEM_NOME_LOCAL = /^[\s[(]*(?:s\.\s?[nl]\.?(?:\s?[nl]\.?)?(?:\s?d\.?)?|(?<=\[)s[nl]d?(?=\])|sine\s+(?:nomine|loco)|sans\s+(?:nom|lieu)|ohne\s+(?:verlag|ort)|o\.\s?o\.|o\.\s?v\.)[\s\])?.,;:]*$/i
+export function semNomeLocal(s) {
+  const t = String(s || '').trim()
+  if (!t) return ''
+  // ("[S.l.] : [s.n.]", "[S.l.] ; [s.n.], 1543": cada parte é sine nomine/loco ou só a data)
+  const partes = t.split(/\s*[:;]\s*|,\s*(?=\[?\d{4}|\[?[MDCLXVI.]{3,}\]?$)/).filter(Boolean)
+  const soData = (x) => /^\[?\s*c?\.?\s*1[4-9]\d\d\??\s*\]?\.?$/i.test(x.trim())
+  if (partes.every((x) => SEM_NOME_LOCAL.test(x) || soData(x)) && partes.some((x) => SEM_NOME_LOCAL.test(x))) return ''
+  return t
+}
+
+// Imprenta inteira no campo da editora ("À Lyon : par Michel du Bois, M.D.LVI") → { local, editora } sem a data.
+// Só quando se deixa separar com segurança: um só ":", o local com 1 a 3 palavras sem algarismos, e uma editora que
+// sobra depois de tirar a data; senão devolve null (e fica como está).
+const PREPOSICAO_LOCAL = /^(?:à|a|á|en|in|im|zu|apud)\s+/i
+const PREPOSICAO_EDITORA = /^(?:par|chez|apud|appresso|presso|per|por|bei|bey|by|de chez)\s+/i
+const DATA_NO_FIM = /[\s,.;]*\[?\s*(?:(?:[MDCLXVI]\s?\.?\s?){3,}|c?\.?\s*1[4-9]\d\d\??)\s*\]?\.?$/
+export function separarImprenta(s) {
+  const t = String(s || '').trim()
+  const partes = t.split(/\s+:\s+|\s*:\s+/)
+  if (partes.length !== 2) return null
+  const local = partes[0].replace(PREPOSICAO_LOCAL, '').replace(/^\[|\]$/g, '').trim()
+  if (!local || /\d/.test(local) || local.split(/\s+/).length > 3 || !/^\p{Lu}/u.test(local)) return null
+  const editora = partes[1].replace(DATA_NO_FIM, '').replace(PREPOSICAO_EDITORA, '').replace(/[\s,;:.]+$/, '').trim()
+  if (!editora || /:/.test(editora)) return null
+  return { local: semNomeLocal(local), editora: semNomeLocal(editora) }
+}
+
 export function candidato(dados) {
-  return {
+  const c = {
     fonte: '',
     confianca: 0,
     tipo_sugerido: '',
@@ -181,6 +212,9 @@ export function candidato(dados) {
     palavras_chave: [],
     ...dados,
   }
+  c.editora = semNomeLocal(c.editora)
+  c.local = semNomeLocal(c.local)
+  return c
 }
 
 // ---- Comparação de títulos (partilhada pela importação e pela watch folder)

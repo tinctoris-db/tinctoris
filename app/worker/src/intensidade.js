@@ -7,8 +7,8 @@
 // A escolha fica em app/dados/intensidade.json (a cópia de teste usa outra pasta).
 import fs from 'node:fs'
 import path from 'node:path'
-import { execFile, spawn } from 'node:child_process'
 import { PASTAS } from './config.js'
+import { lerEnergia as energiaDoSistema, comandoEmPoupanca, prioridadeDoServico, manterAcordado } from './plataforma.js'
 import { log } from './registo.js'
 import { m, erro } from './mensagens.js'
 
@@ -22,18 +22,13 @@ try {
   if (NIVEIS.includes(n)) escolhido = n
 } catch (_) {}
 
-// Fonte de energia, vista a cada minuto (pmset): sem bateria (Mac de secretária) conta como carregador
+// Fonte de energia, vista a cada minuto (Mac: pmset; Windows: Win32_Battery): sem bateria (computador de secretária)
+// conta como carregador
 let energia = { carregador: true, bateria: null }
-function lerEnergia() {
-  return new Promise((ok) =>
-    execFile('/usr/bin/pmset', ['-g', 'batt'], { timeout: 10000 }, (err, out) => {
-      if (!err) {
-        const pct = /(\d+)%/.exec(out)
-        energia = { carregador: !/Battery Power/.test(out), bateria: pct ? Number(pct[1]) : null }
-      }
-      ok(energia)
-    })
-  )
+async function lerEnergia() {
+  const lida = await energiaDoSistema()
+  if (lida) energia = lida
+  return energia
 }
 
 export const nivelEscolhido = () => escolhido
@@ -70,7 +65,7 @@ export async function folgaEntreReanalises(novoChegou = () => false) {
 
 // Programas externos (pdftoppm, tesseract, sips…) em prioridade baixa quando em poupança
 export function comPrioridade(bin, args) {
-  return emPoupanca() ? ['/usr/sbin/taskpolicy', ['-b', bin, ...args]] : [bin, args]
+  return emPoupanca() ? comandoEmPoupanca(bin, args) : [bin, args]
 }
 
 // O próprio serviço em prioridade baixa (ou normal) e, só em «máxima», o Mac sem adormecer enquanto o
@@ -83,10 +78,10 @@ async function aplicar() {
   const antes = aplicado
   aplicado = efetivo
   const baixa = efetivo !== 'maxima'
-  await new Promise((ok) => execFile('/usr/sbin/taskpolicy', [baixa ? '-b' : '-B', '-p', String(process.pid)], () => ok()))
+  await prioridadeDoServico(baixa)
   if (efetivo === 'maxima' && !acordado) {
-    acordado = spawn('/usr/bin/caffeinate', ['-i', '-w', String(process.pid)], { stdio: 'ignore' })
-    acordado.on('exit', () => (acordado = null))
+    acordado = manterAcordado(process.pid)
+    acordado?.on('exit', () => (acordado = null))
   } else if (efetivo !== 'maxima' && acordado) {
     acordado.kill()
     acordado = null

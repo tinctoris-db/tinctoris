@@ -41,6 +41,8 @@ export function seguro(s) {
 // "Sonata em Ré menor, K. 1" -> "Sonata-em-Re-menor-K-1"
 function tituloFicheiro(t, max = 80) {
   const palavras = semAcentos(t).replace(/[^A-Za-z0-9]+/g, ' ').trim().split(' ').filter(Boolean)
+  // (o «pdf» no fim do título vem do nome original, "…_pdf.pdf": não vai para o nome organizado)
+  while (palavras.length > 1 && /^pdf$/i.test(palavras[palavras.length - 1])) palavras.pop()
   let out = ''
   for (const p of palavras) {
     if ((out + '-' + p).length > max) break

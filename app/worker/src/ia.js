@@ -8,6 +8,7 @@ import { correr } from './extracao.js'
 import { pessoa, eInstituicao } from './fontes_externas/util.js'
 import { log } from './registo.js'
 import { m, erro } from './mensagens.js'
+import { converter } from './imagens.js'
 
 const TIPOS = ['Livro', 'Capítulo de livro', 'Artigo', 'Tese / dissertação', 'Partitura', 'Manuscrito', 'Edição crítica', 'Programa de concerto', 'Carta', 'Relatório', 'Legislação', 'Outro']
 const PAPEIS = ['autor', 'compositor', 'editor', 'tradutor', 'arranjador', 'intérprete']
@@ -50,7 +51,7 @@ async function imagemPagina(caminho, categoria, pagina = 1) {
     if (categoria === 'pdf') {
       await correr(BIN.pdftoppm, ['-r', '100', '-png', '-singlefile', '-f', String(pagina), '-l', String(pagina), caminho, path.join(tmp, 'p')], { timeout: 120000 })
     } else {
-      await correr('/usr/bin/sips', ['-s', 'format', 'png', '-Z', '1200', caminho, '--out', png], { timeout: 60000 })
+      await converter(caminho, png, { formato: 'png', ladoMaior: 1200, timeout: 60000 })
     }
     return (await fsp.readFile(png)).toString('base64')
   } finally {

@@ -1,6 +1,6 @@
 {
   "name": "tinctoris-servico",
-  "version": "0.11.0-beta",
+  "version": "0.12.0-beta",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,7 +18,9 @@
     "chokidar": "^5.0.0",
     "pdf-lib": "^1.17.1",
     "pocketbase": "^0.28.1",
-    "word-extractor": "1.0.4"
+    "sharp": "^0.34.5",
+    "word-extractor": "1.0.4",
+    "zxing-wasm": "^2.2.4"
   },
   "overrides": {
     "node-fetch": "^2.7.0"

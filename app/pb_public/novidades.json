@@ -2,6 +2,35 @@
   "_nota": "Novidades de cada versão, mostradas em «Acerca» (a mais recente primeiro). Cada texto em português (pt) e inglês (en). O NOVIDADES.md, na raiz, tem a mesma lista para ler no GitHub.",
   "versoes": [
     {
+      "versao": "0.12.0-beta",
+      "data": {
+        "pt": "18 de Outubro de 2026",
+        "en": "18 October 2026"
+      },
+      "grupos": [
+        {
+          "titulo": {
+            "pt": "Novidades",
+            "en": "What's new"
+          },
+          "itens": [
+            {
+              "pt": "TINCTORIS também em Windows 11 (experimental): instalação com uma linha no PowerShell (winget), ícone no Ambiente de Trabalho e actualização automática a partir das versões publicadas.",
+              "en": "TINCTORIS on Windows 11 too (experimental): one-line installation in PowerShell (winget), a Desktop icon and automatic updates from the published releases."
+            },
+            {
+              "pt": "Imagens convertidas com uma ferramenta que funciona nos dois sistemas: as páginas de visualização das fotografias ocupam metade do espaço.",
+              "en": "Images are converted with a tool that works on both systems: the viewing pages of photographs take half the space."
+            },
+            {
+              "pt": "Catálogos: «[s.n.]» e «[S.l.]» ficam vazios; a imprenta da Gallica é separada em local e editora; títulos com «pdf» vindo do nome do ficheiro deixam de passar.",
+              "en": "Catalogues: “[s.n.]” and “[S.l.]” are left empty; the Gallica imprint is split into place and publisher; titles ending in “pdf” from the file name no longer slip through."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "versao": "0.11.0-beta",
       "data": {
         "pt": "18 de Outubro de 2026",

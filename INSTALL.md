@@ -3,7 +3,7 @@
 *Treatises, Inventories, Notation, Codices, Texts, Organology, Records, Iconography and Sources.*
 
 TINCTORIS is a sources database for musicology, artistic research and teaching: manuscripts, prints, scores,
-recordings, instruments, iconography. Each person installs it on their own Mac and keeps their own library.
+recordings, instruments, iconography. Each person installs it on their own Mac (or, experimentally, on a Windows PC) and keeps their own library.
 
 > The interface comes in **European Portuguese** and **English** (choose it in **Settings → Interface language**).
 > Guia em português: [GUIA-INSTALACAO.md](GUIA-INSTALACAO.md).
@@ -57,6 +57,25 @@ If anything fails, the installer opens the feedback form with the error already 
 
 By default, TINCTORIS only opens on your own Mac. To open it also on an iPad or another computer on the same Wi-Fi
 network: **Settings** → **Your library** → switch off **Open on this Mac only**, then open TINCTORIS again.
+
+## Windows (experimental)
+
+Since 0.12.0-beta, TINCTORIS also runs on **Windows 11** (or an up-to-date Windows 10), 64-bit.
+1. Open **PowerShell** (Windows key, type "PowerShell", Enter).
+2. Paste this line (right-click) and press Enter:
+
+   ```
+   irm https://raw.githubusercontent.com/tinctoris-db/tinctoris/main/instalar-tinctoris.ps1 | iex
+   ```
+3. The installer shows 7 steps and uses **winget** (built into Windows) to install Node.js, Poppler, Tesseract, FFmpeg
+   and SQLite: answer **Yes** when Windows asks for permission. It takes about 20 minutes.
+4. At the end a **TINCTORIS** icon appears on the Desktop. Double-click it: a black window opens (keep it open while you
+   use the program) and then your browser.
+
+The program lives in the `TINCTORIS` folder inside your user folder (the watch folder is `TINCTORIS\watch_folder`).
+Differences from the Mac: what goes to the Bin on a Mac goes to a **"TINCTORIS - Lixo"** folder at the root of the drive;
+iPhone HEIC photos are not read yet; barcode and text reading in cover photos is weaker; .pages files get no full text.
+The local AI needs 16 GB of memory (with less, it stays off).
 
 ## Exporting bibliographic references
 

@@ -9,6 +9,7 @@
 //   ./biblioteca lotes-midi [--aplicar] [--excluir scozzesi,thesaurus]
 //   ./biblioteca reanalisar-nomes [--aplicar]
 //   ./biblioteca limpar-titulos [--aplicar]
+//   ./biblioteca corrigir-fichas [--aplicar]
 //   ./biblioteca reler-rism [--aplicar]
 //   ./biblioteca reler-imslp [--aplicar] [--limite N]
 //   ./biblioteca rever-colecoes [--aplicar]
@@ -29,6 +30,7 @@ import { reverCatalogos } from './rever_catalogos.js'
 import { lotesExistentes, autorDoNome } from './lotes_midi.js'
 import { doNomeFicheiro } from './capa.js'
 import { limparTitulos } from './limpar_titulos.js'
+import { corrigirFichas } from './corrigir_fichas.js'
 import { planoImagens, aplicarPlano, EM_ESPERA } from './reconstruir_imagens.js'
 import { testarCatalogos } from './testar_catalogos.js'
 
@@ -67,6 +69,8 @@ const AJUDA = `Comandos:
                                ("rossi_1608_9", "sonata_1720_2"): lista; com --aplicar, reanalisa-as
   limpar-titulos [--aplicar]   fichas por rever com títulos "SD ANONIMO SD-ANONIMO-…" (versão antiga):
                                título = nome original do ficheiro, e o ficheiro é renomeado
+  corrigir-fichas [--aplicar]  «[s.n.]»/«[S.l.]» ficam vazios; imprenta inteira da Gallica separada em local e
+                               editora; títulos terminados em «pdf» ficam por rever, com uma nota a perguntar
   reler-rism [--aplicar]       fichas identificadas no RISM sem impressor/editor: relê o registo e
                                preenche o impressor (e o local, se faltar); nunca apaga nada
   reler-imslp [--aplicar]      fichas identificadas no IMSLP: lê a página da obra (colecção ou obra,
@@ -213,6 +217,33 @@ async function main() {
     for (const f of mudar) console.log(`#${String(f.numero).padStart(5, '0')}  ${f.titulo.slice(0, 70).padEnd(70)}  →  ${f.novo}${f.aviso ? `  [aviso: ${f.aviso}]` : ''}`)
     console.log(`\n${mudar.length} títulos${opcoes.aplicar ? `: ${feitas} corrigidos, ${saltadas} saltados (mudaram ou estavam a ser processados)` : ' (simulação: nada foi alterado; para gravar, acrescente --aplicar)'}`)
     return
+  }
+
+  if (comando === 'corrigir-fichas') {
+    const servico = async (acao, corpo) => {
+      const r = await fetch(`http://127.0.0.1:${PORTA}/${acao}`, { method: 'POST', headers: { 'X-Segredo': segredo(), 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.erro || r.statusText)
+      return j
+    }
+    const hoje = new Date().toISOString().slice(0, 10)
+    const registo = path.join(PASTAS.app, 'registos', `corrigir-fichas-${opcoes.aplicar ? 'aplicado' : 'simulacao'}-${hoje}.txt`)
+    if (opcoes.aplicar) console.log(`Cópia de segurança: ${await copiaDeSeguranca('antes-corrigir-fichas')}`)
+    const { fichas, feitas, saltadas } = await corrigirFichas({ aplicar: !!opcoes.aplicar, servico })
+    const linhas = []
+    for (const f of fichas) {
+      linhas.push(`#${String(f.numero).padStart(5, '0')}  «${String(f.titulo).slice(0, 70)}»${f.saltada ? '  [SALTADA: mudou ou estava a ser processada]' : ''}${f.aviso ? `  [aviso: ${f.aviso}]` : ''}`)
+      for (const x of f.feito) linhas.push(`         corrige: ${x}`)
+      for (const x of f.perguntas) linhas.push(`         pergunta: ${x}`)
+      for (const x of f.conflitos) linhas.push(`         por decidir: ${x}`)
+    }
+    const n = (k) => fichas.filter((f) => f[k].length).length
+    linhas.push(`\n${fichas.length} fichas: ${n('feito')} com correções, ${n('perguntas')} títulos com pergunta (ficam por rever), ${n('conflitos')} por decidir.`)
+    linhas.push(opcoes.aplicar ? `${feitas} gravadas, ${saltadas} saltadas.` : 'Simulação: nada foi alterado. Para gravar, acrescente --aplicar.')
+    fs.mkdirSync(path.dirname(registo), { recursive: true })
+    fs.writeFileSync(registo, linhas.join('\n') + '\n')
+    console.log(linhas.join('\n'))
+    return console.log(`\nLista guardada em ${registo}`)
   }
 
   if (comando === 'reler-rism') {

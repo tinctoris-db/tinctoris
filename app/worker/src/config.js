@@ -2,6 +2,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { MAC, pastasDeProgramas, nomeDePrograma } from './plataforma.js'
 
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const RAIZ = process.env.BIBLIOTECA_RAIZ || path.resolve(APP, '..')
@@ -63,10 +64,10 @@ export const PORTA = Number(process.env.SERVICO_PORTA) || 8091
 export const segredo = () => fs.readFileSync(path.join(APP, '.segredo'), 'utf8').trim()
 export const credenciais = () => JSON.parse(fs.readFileSync(path.join(APP, '.servico.json'), 'utf8'))
 
-// Programas externos (Homebrew instala em /opt/homebrew/bin)
+// Programas externos (no Mac, o Homebrew instala em /opt/homebrew/bin; em Windows, ver plataforma.js)
 function binario(nome) {
-  for (const d of ['/opt/homebrew/bin', '/usr/local/bin']) {
-    const p = path.join(d, nome)
+  for (const d of pastasDeProgramas(APP)) {
+    const p = path.join(d, nomeDePrograma(nome))
     if (fs.existsSync(p)) return p
   }
   return nome
@@ -77,4 +78,6 @@ export const BIN = {
   pdftoppm: binario('pdftoppm'),
   tesseract: binario('tesseract'),
   ffprobe: binario('ffprobe'),
+  // (no Mac, o sqlite3 do próprio sistema, como sempre; em Windows, o que o instalador põe com o winget)
+  sqlite3: MAC ? '/usr/bin/sqlite3' : binario('sqlite3'),
 }

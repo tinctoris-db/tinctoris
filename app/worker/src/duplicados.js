@@ -18,6 +18,7 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { PASTAS, DUPLICADOS, BIN } from './config.js'
+import { comandoGentil } from './plataforma.js'
 import { pb, garantirSessao } from './pb.js'
 import * as F from './ficheiros.js'
 import { log } from './registo.js'
@@ -48,7 +49,7 @@ const chavePar = (a, b) => [a, b].sort().join('|')
 
 function correr(args, timeout = 180000) {
   return new Promise((ok) => {
-    const p = spawn('nice', ['-n', '15', ...args])
+    const p = spawn(...comandoGentil(args))
     const partes = []
     const t = setTimeout(() => p.kill('SIGKILL'), timeout)
     p.stdout.on('data', (d) => partes.push(d))

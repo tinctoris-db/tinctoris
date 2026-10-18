@@ -23,6 +23,8 @@ CLAUDE.local.md
 /app/node/
 /app/modelos/
 /app/tessdata/
+# (Windows: programas e pastas onde o winget os pôs — ver app/instalar.ps1)
+/app/ferramentas/
 node_modules/
 
 # ---- Segredos locais (criados pelo instalar.sh)

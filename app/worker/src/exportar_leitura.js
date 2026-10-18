@@ -16,7 +16,8 @@ import crypto from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
-import { PASTAS, DUPLICADOS, padroesDono } from './config.js'
+import { PASTAS, DUPLICADOS, BIN, padroesDono } from './config.js'
+import { discosMontados, clonarFicheiro } from './plataforma.js'
 import { m, erro, traduzivel } from './mensagens.js'
 
 const FORMATO = 1
@@ -26,7 +27,7 @@ const BLOQUEIO = '.tinctoris-leitura.bloqueio'
 const BLOQUEIO_VELHO = 6 * 3600 * 1000
 const PAGINA = 'Abrir TINCTORIS.html'
 const LEIAME = 'LEIA-ME.txt'
-const SQLITE = '/usr/bin/sqlite3'
+const SQLITE = BIN.sqlite3
 // Metadados que podem sair: lista fechada (FORMATO.md §4). Só saem se também estiverem nos campos do tipo da ficha;
 // um campo novo num tipo não sai sem ser acrescentado aqui. Ficam de fora, entre outros: nota_revisao, herdado_de, lote,
 // transcricao_midi, catalogo_ia, exemplar_papel (onde o dono guarda o livro) e, do «Registo de ensaio», notas_processo e participantes.
@@ -295,9 +296,11 @@ async function verificarDestino(destino, origem, base) {
   if (!destino) throw erro('Falta a pasta de destino.')
   destino = path.resolve(destino)
   const pai = path.dirname(destino)
-  if (!fs.existsSync(pai)) throw erro('A pasta onde ficaria a cópia não existe (o disco está ligado?): {pai}', { pai })
+  // (primeiro a protecção: em Windows, um caminho com outra forma Unicode dos acentos pode não «existir», mas é recusado
+  // pelo que é — dentro da biblioteca — e não por faltar a pasta)
   if (!foraDasProtegidas(destino, [origem, base, ...pastasProtegidas()]))
     throw erro('O destino não pode ficar dentro da biblioteca nem da pasta do TINCTORIS (nem conter a biblioteca).')
+  if (!fs.existsSync(pai)) throw erro('A pasta onde ficaria a cópia não existe (o disco está ligado?): {pai}', { pai })
   const st = await lstat(destino)
   if (!st) return { destino, existe: false, marca: null }
   if (!st.isDirectory()) throw erro('O destino não é uma pasta: {destino}', { destino })
@@ -316,19 +319,14 @@ async function verificarDestino(destino, origem, base) {
   return { destino, existe: true, marca }
 }
 
-// Sistema de ficheiros do disco de destino (pela lista de discos montados do Mac): só para avisar
+// Sistema de ficheiros do disco de destino (pela lista de discos montados): só para avisar
 async function sistemaDeFicheiros(p) {
-  return new Promise((ok) =>
-    execFile('/sbin/mount', [], { encoding: 'utf8' }, (e, saida) => {
-      if (e) return ok('')
-      let melhor = { ponto: '', tipo: '' }
-      for (const l of saida.split('\n')) {
-        const m = l.match(/^.+? on (.+) \(([^,)]+)/)
-        if (m && (p === m[1] || p.startsWith(m[1].endsWith('/') ? m[1] : m[1] + '/')) && m[1].length > melhor.ponto.length) melhor = { ponto: m[1], tipo: m[2] }
-      }
-      ok(melhor.tipo.toLowerCase())
-    })
-  )
+  let melhor = { ponto: '', tipo: '' }
+  for (const d of await discosMontados()) {
+    const raiz = /[/\\]$/.test(d.ponto) ? d.ponto : d.ponto + path.sep
+    if ((p === d.ponto || p.startsWith(raiz)) && d.ponto.length > melhor.ponto.length) melhor = { ponto: d.ponto, tipo: d.sistema }
+  }
+  return melhor.tipo
 }
 
 const INVALIDO_WINDOWS = /[<>:"\\|?*\u0000-\u001f]|[. ]$/
@@ -768,7 +766,7 @@ async function copiarFicheiro(de, alvo, modificado, clonar) {
   // No mesmo disco APFS: clone instantâneo com `cp -c` (o COPYFILE_FICLONE do Node 22.5 não clona no Mac: copia
   // tudo, e o FICLONE_FORCE dá ENOSYS). Noutro disco: cópia simples dos dados (o copyfile do Mac levaria os
   // atributos estendidos, que no exFAT viram ficheiros «._…» e podem trazer a origem das descargas).
-  if (clonar) await new Promise((ok, falha) => execFile('/bin/cp', ['-c', de, tmp], (e, _, erro) => (e ? falha(new Error(String(erro || e.message).trim())) : ok())))
+  if (clonar) await clonarFicheiro(de, tmp)
   else await pipeline(fs.createReadStream(de, { highWaterMark: 1 << 20 }), fs.createWriteStream(tmp, { flags: 'wx' }))
   if (!(await lstat(tmp))?.isFile()) throw erro('No destino, {caminho} não é um ficheiro normal: recusado.', { caminho: tmp })
   const t = new Date(modificado)

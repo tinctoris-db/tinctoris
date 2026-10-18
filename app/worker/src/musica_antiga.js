@@ -55,6 +55,20 @@ export function restoDoNome(ficheiro, sigla, cota) {
   const vistas = new Set()
   return palavras.filter((w) => (vistas.has(w.toLowerCase()) ? false : vistas.add(w.toLowerCase()))).join(' ').replace(/^[\s\-–]+|[\s\-–]+$/g, '').trim()
 }
+// Título de uma fonte de arquivo pelo nome do ficheiro: «SIGLA COTA — resto do nome» (sem cota: «SIGLA — resto»)
+// ("P-Ev_alegria_cod_1_CARDOSO_pdf.pdf" → "P-Ev — alegria cod 1 CARDOSO"; o «pdf» do nome não entra)
+export function tituloSiglaCota(ficheiro, sigla, cota) {
+  const resto = restoDoNome(ficheiro, sigla, cota)
+  return `${sigla}${cota ? ` ${cota}` : ''}${resto ? ` — ${resto}` : ''}`
+}
+
+// Nota de uma sigla no início do nome que o RISM não reconhece; só fala da cota quando há cota válida no nome
+// (Pedro, 2/10/2026: «P-Ev_alegria_cod_1_CARDOSO» dizia «com a cota do nome do ficheiro» sem gravar cota nenhuma)
+export function notaSiglaDesconhecida({ texto, cota = '', possiveis = [] }) {
+  const pode = possiveis.length ? ` (pode ser: ${possiveis.join(', ')})` : ''
+  return `Sigla «${texto}» não reconhecida no RISM${pode}: tratada como manuscrito${cota ? ` com a cota do nome do ficheiro (${cota})` : ', sem cota (o nome do ficheiro não tem uma cota reconhecível)'}.`
+}
+
 // Compositores escritos em maiúsculas no nome ("Duarte LOBO", "VICTORIA", "ROGIER e GHERSEM"): candidatos a autor
 export function maiusculasDoNome(ficheiro) {
   const s = path.basename(String(ficheiro || ''), path.extname(String(ficheiro || ''))).normalize('NFC').replace(/[_]+/g, ' ')

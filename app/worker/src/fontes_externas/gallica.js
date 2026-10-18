@@ -2,7 +2,7 @@
 // - Exemplar: o identificador "ark:/12148/…" lido na folha inicial (ou no nome do ficheiro) dá o registo exato do
 //   exemplar digitalizado (cota, biblioteca de origem) e a notícia do catálogo (outros exemplares da BnF, proveniência).
 // - Pesquisa: por compositor, título e ano nas partituras e manuscritos da Gallica (depois do RISM e do DIAMM).
-import { obterTexto, pessoa, candidato, normalizar, semelhanca } from './util.js'
+import { obterTexto, pessoa, candidato, normalizar, semelhanca, semNomeLocal, separarImprenta } from './util.js'
 import { texto, textos, blocos, camposMarc, marc, registosSru } from './xml.js'
 
 const GALLICA = 'https://gallica.bnf.fr'
@@ -37,9 +37,12 @@ export function pessoaBnf(s) {
 }
 
 // "Valerio et Lodovico Dorico (Roma)" → { editora, local }
-function editoraLocal(s) {
+// (e a imprenta inteira, "À Lyon : par Michel du Bois, M.D.LVI" → Lyon, Michel du Bois, sem a data, que tem campo
+//  próprio; só quando se deixa separar com segurança — Pedro, 2/10/2026, Epitome de Jambe de Fer)
+export function editoraLocal(s) {
   const m = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(String(s || '').trim())
-  return m ? { editora: m[1].trim(), local: m[2].trim() } : { editora: String(s || '').trim(), local: '' }
+  if (m) return { editora: semNomeLocal(m[1].trim()), local: semNomeLocal(m[2].trim()) }
+  return separarImprenta(s) || { editora: semNomeLocal(s), local: '' }
 }
 
 // "Bibliothèque nationale de France, département Musique, RES F-714" → biblioteca + cota
